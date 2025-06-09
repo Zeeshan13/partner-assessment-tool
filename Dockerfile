@@ -5,28 +5,24 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Install system dependencies for better compatibility
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    && ln -sf python3 /usr/bin/python
+RUN apk add --no-cache python3 make g++
 
 # Copy backend package files first (for better Docker layer caching)
-COPY backend/package*.json ./
+COPY backend/package.json backend/package-lock.json ./
 
-# Install backend dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies (including devDependencies for build process)
+RUN npm install && npm cache clean --force
 
 # Copy backend source code
 COPY backend/ ./
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+    adduser -S nodejs -u 1001
 
 # Change ownership of app directory
-RUN chown -R nextjs:nodejs /app
-USER nextjs
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
 # Expose the port
 EXPOSE 3001
