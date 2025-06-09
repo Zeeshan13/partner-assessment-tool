@@ -1,0 +1,12 @@
+[build]
+  publish = "build"
+  command = "npm run build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  REACT_APP_API_BASE = "https://your-backend-domain.railway.app/api"
+  REACT_APP_TALLY_URL = "https://tally.so/r/YOUR_ACTUAL_FORM_ID"
