@@ -8,3 +8,11 @@ yarn-error.log*
 .DS_Store
 logs/
 *.log
+
+# Create .gitignore for backend
+echo "node_modules/
+.env
+*.log
+.DS_Store
+dist/
+build/" > .gitignore
