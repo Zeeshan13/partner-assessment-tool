@@ -17,8 +17,9 @@ app.use(helmet());
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://partner-assessment-tool.netlify.app/', // Add your actual Netlify URL
-    'https://your-custom-domain.com'  // If you have a custom domain
+    'https://partner-assessment-tool.netlify.app',
+    /\.netlify\.app$/, // This allows any netlify.app subdomain
+    /\.netlify\.live$/ // This allows netlify preview deployments
   ],
   credentials: true
 }));
