@@ -15,7 +15,11 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://your-netlify-app-name.netlify.app', // Add your actual Netlify URL
+    'https://your-custom-domain.com'  // If you have a custom domain
+  ],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
