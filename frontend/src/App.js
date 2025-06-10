@@ -4,6 +4,13 @@ import './App.css';
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001/api';
 const TALLY_FORM_URL = process.env.REACT_APP_TALLY_URL || 'https://tally.so/r/YOUR_FORM_ID';
 
+// Add this at the top of your App component, right after the const declarations
+console.log('API_BASE:', API_BASE);
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_BASE: process.env.REACT_APP_API_BASE
+});
+
 function App() {
   const [currentView, setCurrentView] = useState('intro');
   const [sessionId, setSessionId] = useState(null);
@@ -40,31 +47,36 @@ function App() {
   const startAssessment = async () => {
     setLoading(true);
     clearError();
-    
+    console.log('Attempting to connect to:', `${API_BASE}/assessment/start`);
     try {
       const response = await fetch(`${API_BASE}/assessment/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
       
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setSessionId(data.sessionId);
-        setDemographicOptions(data.demographicOptions);
-        setCurrentView('demographics');
-      } else {
-        throw new Error(data.error || 'Failed to start assessment');
-      }
-    } catch (error) {
-      handleError(error, 'Unable to connect to the assessment service. Please check your internet connection and try again.');
+      console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
     }
-    setLoading(false);
-  };
+    
+    const data = await response.json();
+    console.log('Response data:', data);
+    
+    if (data.success) {
+      setSessionId(data.sessionId);
+      setDemographicOptions(data.demographicOptions);
+      setCurrentView('demographics');
+    } else {
+      throw new Error(data.error || 'Failed to start assessment');
+    }
+  } catch (error) {
+    console.error('Full error details:', error);
+    handleError(error, 'Unable to connect to the assessment service. Please check your internet connection and try again.');
+  }
+  setLoading(false);
+};
 
   const submitDemographics = async () => {
     // Enhanced validation
