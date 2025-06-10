@@ -1348,3 +1348,23 @@
     background: #a25ff4;
   }
 }
+
+/* Fix for reverse typing issue */
+.response-input textarea {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: normal !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
+
+/* Force normal text input behavior */
+.response-input textarea:focus {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Override any inherited text direction */
+.response-input {
+  direction: ltr !important;
+}

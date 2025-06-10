@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001/api';
@@ -17,19 +17,31 @@ function App() {
   const [demographicOptions, setDemographicOptions] = useState({});
   const [demographics, setDemographics] = useState({});
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [userResponse, setUserResponse] = useState('');
+  //const [userResponse, setUserResponse] = useState('');
   const [conversationHistory, setConversationHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState({ questionsAnswered: 0, estimatedRemaining: 14 });
   const [results, setResults] = useState(null);
 
+   // ADD THE NEW HOOKS HERE - INSIDE THE COMPONENT
+  const [inputValue, setInputValue] = useState('');
+  const textareaRef = useRef(null);
+/*
+  // Add this useEffect to sync states when question changes
+   useEffect(() => {
+  if (currentQuestion) {
+    setInputValue('');
+  }
+}, [currentQuestion]);
+*/
   // Enhanced error handling
   const handleError = (error, fallbackMessage) => {
     console.error(error);
     setError(fallbackMessage);
     setLoading(false);
   };
+
 
   // Clear error when user takes action
   const clearError = () => setError(null);
@@ -78,6 +90,7 @@ function App() {
   setLoading(false);
 };
 
+
   const submitDemographics = async () => {
     // Enhanced validation
     const requiredFields = ['ageGroup', 'gender', 'region', 'relationshipStatus'];
@@ -125,68 +138,79 @@ function App() {
   };
 
   const submitResponse = async () => {
-    if (!userResponse.trim()) {
-      setError('Please share your thoughts before continuing.');
-      return;
+  // Get value directly from textarea if inputValue is empty
+  let responseValue = inputValue;
+  if (!responseValue && textareaRef.current) {
+    responseValue = textareaRef.current.value;
+  }
+  
+  if (!responseValue.trim()) {
+    setError('Please share your thoughts before continuing.');
+    return;
+  }
+
+  
+
+  const currentResponse = responseValue.trim();
+  setLoading(true);
+  clearError();
+
+  const currentQuestionData = currentQuestion;
+
+  try {
+    const response = await fetch(`${API_BASE}/assessment/respond`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: sessionId,
+        questionId: currentQuestion.id,
+        response: currentResponse
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
     }
 
-    setLoading(true);
-    clearError();
-    
-    // Optimistically update UI
-    const newHistory = [...conversationHistory, 
-      { type: 'question', content: currentQuestion.text, timestamp: new Date() },
-      { type: 'response', content: userResponse, timestamp: new Date() }
-    ];
-    setConversationHistory(newHistory);
+    const data = await response.json();
 
-    try {
-      const response = await fetch(`${API_BASE}/assessment/respond`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          questionId: currentQuestion.id,
-          response: userResponse
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
+    if (data.success) {
+      const newHistory = [...conversationHistory, 
+        { type: 'question', content: currentQuestionData.text, timestamp: new Date() },
+        { type: 'response', content: currentResponse, timestamp: new Date() }
+      ];
+      setConversationHistory(newHistory);
+      
+      // Clear both the state and the textarea
+      setInputValue('');
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
       }
-
-      const data = await response.json();
-
-      if (data.success) {
-        if (data.complete) {
-          // Add completion message to history
-          setConversationHistory([...newHistory, {
-            type: 'completion',
-            content: data.message,
-            timestamp: new Date()
-          }]);
-          
-          // Small delay for better UX
-          setTimeout(() => {
-            getResults();
-          }, 1000);
-        } else {
-          setCurrentQuestion(data.question);
-          setProgress(data.progress || progress);
-          scrollToCurrentQuestion(); // Auto-scroll to new question
-        }
+      
+      if (data.complete) {
+        setConversationHistory([...newHistory, {
+          type: 'completion',
+          content: data.message,
+          timestamp: new Date()
+        }]);
+        
+        setTimeout(() => {
+          getResults();
+        }, 1000);
       } else {
-        throw new Error(data.error || 'Failed to process response');
+        setCurrentQuestion(data.question);
+        setProgress(data.progress || progress);
+        scrollToCurrentQuestion();
       }
-    } catch (error) {
-      // Revert optimistic update on error
-      setConversationHistory(conversationHistory);
-      handleError(error, 'Failed to save your response. Please try again.');
+    } else {
+      throw new Error(data.error || 'Failed to process response');
     }
+  } catch (error) {
+    handleError(error, 'Failed to save your response. Please try again.');
+  }
 
-    setUserResponse('');
-    setLoading(false);
-  };
+  setLoading(false);
+};
 
   const getResults = async () => {
     setLoading(true);
@@ -421,23 +445,97 @@ function App() {
       </div>
 
       {currentQuestion && (
-        <div className="response-input">
-          <textarea
-            value={userResponse}
-            onChange={(e) => { setUserResponse(e.target.value); clearError(); }}
-            placeholder="Share your thoughts here... Be as detailed as you'd like."
-            rows={4}
-            disabled={loading}
-          />
-          <button 
-            onClick={submitResponse}
-            disabled={loading || !userResponse.trim()}
-            className="submit-button"
-          >
-            {loading ? '🔄 Processing...' : '➡️ Continue'}
-          </button>
-        </div>
-      )}
+  <div className="response-input" style={{ direction: 'ltr' }}>
+    <textarea
+      key={`textarea-${currentQuestion.id}`}
+      ref={textareaRef}
+      placeholder="Share your thoughts here... Be as detailed as you'd like."
+      rows={4}
+      disabled={loading}
+      autoFocus
+      style={{
+        direction: 'ltr',
+        textAlign: 'left',
+        unicodeBidi: 'normal',
+        writingMode: 'horizontal-tb',
+        fontFamily: 'inherit'
+      }}
+      dir="ltr"
+    />
+    <button 
+      onClick={async () => {
+        const value = textareaRef.current?.value || '';
+        if (!value.trim()) {
+          setError('Please share your thoughts before continuing.');
+          return;
+        }
+        
+        clearError();
+        setLoading(true);
+
+        const currentResponse = value.trim();
+        const currentQuestionData = currentQuestion;
+
+        try {
+          const response = await fetch(`${API_BASE}/assessment/respond`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: sessionId,
+              questionId: currentQuestion.id,
+              response: currentResponse
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.success) {
+            const newHistory = [...conversationHistory, 
+              { type: 'question', content: currentQuestionData.text, timestamp: new Date() },
+              { type: 'response', content: currentResponse, timestamp: new Date() }
+            ];
+            setConversationHistory(newHistory);
+            
+            // Clear the textarea
+            if (textareaRef.current) {
+              textareaRef.current.value = '';
+            }
+            
+            if (data.complete) {
+              setConversationHistory([...newHistory, {
+                type: 'completion',
+                content: data.message,
+                timestamp: new Date()
+              }]);
+              
+              setTimeout(() => {
+                getResults();
+              }, 1000);
+            } else {
+              setCurrentQuestion(data.question);
+              setProgress(data.progress || progress);
+              scrollToCurrentQuestion();
+            }
+          } else {
+            throw new Error(data.error || 'Failed to process response');
+          }
+        } catch (error) {
+          handleError(error, 'Failed to save your response. Please try again.');
+        }
+
+        setLoading(false);
+      }}
+      disabled={loading}
+      className="submit-button"
+    >
+      {loading ? '🔄 Processing...' : '➡️ Continue'}
+    </button>
+  </div>
+)}
     </div>
   );
 
