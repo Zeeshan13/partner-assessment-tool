@@ -6,6 +6,12 @@ __pycache__/
 # Logs and misc
 *.log
 .env
+.env.local
+.env.production
+.env.*
+# Node modules
+node_modules/
+
 .DS_Store
 dist/
 build/

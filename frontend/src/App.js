@@ -662,8 +662,14 @@ function App() {
           </div>
 
           <div className="gentle-advice-section">
-            <p className="age-specific-advice">{results?.gentleAdvice || "Take care of yourself and trust your instincts."}</p>
+            <h3>💌 Some gentle advice from someone who cares...</h3>
+            <div className="age-specific-advice">
+              <p>{results?.gentleAdvice?.main || "Take care of yourself and trust your instincts."}</p>
+              {results?.gentleAdvice?.followUp && (
+                <p><em>{results.gentleAdvice.followUp}</em></p>
+              )}
           </div>
+        </div>
 
           <div className="support-section">
             <h3>🆘 Sweetie, if you ever feel scared or unsafe...</h3>

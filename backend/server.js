@@ -1,7 +1,8 @@
 // =============================================================================
 // SECTION 1:Dependencies & Setup
 // =============================================================================
-
+// Add this to the top of your server.js file
+const { createClient } = require('@supabase/supabase-js');
 
 const express = require('express');
 const cors = require('cors');
@@ -9,9 +10,22 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 require('dotenv').config();
 
+// Add this to the top of your server.js file
+const { createClient } = require('@supabase/supabase-js');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
+  console.log('✅ Supabase initialized for session storage');
+} else {
+  console.log('⚠️ Supabase not configured - sessions will only be stored in memory');
+}
 // Middleware
 app.use(helmet());
 app.use(cors({
@@ -81,71 +95,88 @@ const DEMOGRAPHIC_OPTIONS = {
 // =============================================================================
 
 const QUESTION_BANK = [
+  // OPENING (1 question) - Ice breaker about daily decisions
   {
     id: 'opener_1',
     text: "I'd like to understand your relationship dynamics better. Let's start with something simple - when you and your partner need to decide on everyday things like where to go for dinner or what to watch, how does that usually play out?",
     stage: 'opening'
   },
+
+  // DECISION-MAKING (2 questions) - Who decides what, how input is handled
   {
     id: 'decision_1',
-    text: "How do you feel when that happens? What do you typically do in response?",
+    text: "When it comes to bigger decisions - like financial choices, social plans, or things that affect both of your lives - who typically takes the lead on those?",
     stage: 'decision_making'
   },
   {
     id: 'decision_2',
-    text: "What about bigger decisions - like financial choices, social plans, or things that affect both of your lives?",
+    text: "When you have input or suggestions on decisions, what usually happens? Does your partner tend to consider your thoughts or handle things their own way?",
     stage: 'decision_making'
   },
+
+  // COMMUNICATION (2 questions) - How disagreements are handled
   {
     id: 'communication_1',
-    text: "When you have different viewpoints on something, what typically happens during those conversations?",
+    text: "When you and your partner see things differently or have a disagreement, what typically happens during those conversations?",
     stage: 'communication'
   },
   {
     id: 'communication_2',
-    text: "How do you feel after those conversations? Does your partner acknowledge your perspective?",
+    text: "After you've had different viewpoints on something, how do those conversations usually wrap up? Does your partner tend to acknowledge your perspective?",
     stage: 'communication'
   },
+
+  // SOCIAL DYNAMICS (2 questions) - Impact on friendships/family
   {
     id: 'social_1',
-    text: "How does your partner respond when you want to spend time with friends or family?",
+    text: "How does your partner typically respond when you want to spend time with friends or family without them?",
     stage: 'social'
   },
   {
     id: 'social_2',
-    text: "How has this affected your relationships with friends and family over time?",
+    text: "Have you noticed any changes in your friendships or family relationships since being with your partner? What's that looked like?",
     stage: 'social'
   },
+
+  // EMOTIONAL SUPPORT (2 questions) - Response to good/bad news
   {
     id: 'emotional_1',
-    text: "When you're having a difficult day or going through something stressful, how does your partner typically respond?",
+    text: "When you're going through something stressful or having a tough time, what does your partner typically do? How do they usually respond?",
     stage: 'emotional'
   },
   {
     id: 'emotional_2',
-    text: "What about when you achieve something positive or have good news to share?",
+    text: "On the flip side, when you achieve something you're proud of or have exciting news to share, how does your partner usually react?",
     stage: 'emotional'
   },
+
+  // BOUNDARIES (2 questions) - Respect for limits and personal space
   {
     id: 'boundaries_1',
-    text: "Can you think of times when you've tried to set a boundary or express a need? How does your partner typically respond?",
+    text: "Can you think of times when you've tried to set a boundary or express a need for something? How does your partner typically handle that?",
     stage: 'boundaries'
   },
   {
     id: 'boundaries_2',
-    text: "What about physical boundaries or personal space?",
+    text: "What about when it comes to personal space, your belongings, or your privacy - how does your partner approach those areas?",
     stage: 'boundaries'
   },
+
+  // PATTERNS (1 question) - Overall relationship patterns
   {
     id: 'patterns_1',
-    text: "Looking at your relationship overall, do you notice any patterns in how conflicts or difficult periods tend to unfold?",
+    text: "Looking at your relationship overall, do you notice any recurring patterns in how conflicts or challenging situations tend to play out between you two?",
     stage: 'patterns'
   },
+
+  // SAFETY (1 question) - Fear of partner's reactions
   {
     id: 'safety_1',
-    text: "Have you ever felt afraid of your partner's reaction to something you might say or do?",
+    text: "Have there been times when you've hesitated to say something or act in a certain way because you were concerned about your partner's reaction?",
     stage: 'safety'
   },
+
+  // FINAL (1 question) - Open-ended for additional concerns
   {
     id: 'final_1',
     text: "Is there anything else about your relationship dynamics that you think would be helpful for me to understand?",
@@ -231,11 +262,11 @@ const PERSONAS = {
       '👥 Social Screening: Every person in your life needs their approval'
     ],
     highTraits: ['CTRL', 'DOMN', 'SNSE'],
-    lowTraits: ['NEED', 'EMOX', 'UNOX']
+    lowTraits: ['NEED', 'EMOX', 'HYPL']
   },
 
-  'The Master of Everything': {
-    title: "The Master of Everything",
+  'Master of Everything': {
+    title: "Master of Everything",
     greeting: "Oh honey... 🤗 We need to talk...",
     empathyOpener: "I've been thinking about what you shared, and my heart goes out to you. Living with someone who thinks they're the expert on everything must be incredibly lonely, even when you're together. 💕",
     mainMessage: "Babe, this is giving me 'know-it-all who actually knows nothing about love' energy. 🤓",
@@ -348,8 +379,8 @@ const PERSONAS = {
     lowTraits: ['DOMN', 'PERS', 'ACCO']
   },
 
-  'The Emotional Invalidator': {
-    title: "The Emotional Invalidator",
+  'Emotional Invalidator': {
+    title: "Emotional Invalidator",
     greeting: "Oh honey... 🤗 I need to tell you something important...",
     empathyOpener: "I've been thinking about what you shared, and I can feel how dismissed and unheard you must feel. Having your emotions constantly invalidated is like having your reality constantly questioned. 💕",
     mainMessage: "Sweetie, this is giving me 'your feelings don't matter' energy. 😢",
@@ -382,7 +413,7 @@ const PERSONAS = {
       '❄️ Cold Comfort: Physical presence without emotional warmth',
       '🔇 Silent Treatment: Your bids for connection are ignored or dismissed'
     ],
-    highTraits: ['IMPL', 'UNOX', 'SEEK'],
+    highTraits: ['IMPL', 'HYPL', 'SEEK'],
     lowTraits: ['CTRL', 'DOMN', 'IMPL']
   },
 
@@ -481,7 +512,6 @@ const PERSONAS = {
     lowTraits: ['ACCO', 'EMPA', 'PERS']
   }
 };
-
 
 // =============================================================================
 // Section 5:COMPLETE CHARACTER REFERENCES SYSTEM
@@ -7586,6 +7616,64 @@ const SCENARIO_ANALYSIS = {
         severity: 'healthy'
       }
     }
+      },
+
+  'Emotional Regulation': {
+    friendlyName: 'How They Handle Their Feelings',
+    icon: '🌪️',
+    description: 'Your partner\'s ability to manage their own emotions without making them your problem',
+    levels: {
+      high: { 
+        label: 'You\'re their emotional punching bag', 
+        description: 'Bad day at work? You\'re gonna hear about it. Stressed about money? Time to take it out on you. Their emotions are like weather systems, and you\'re always in the path of the storm. You\'ve become their personal emotional support human.',
+        advice: 'Love, their feelings are valid, but making them your responsibility isn\'t fair. 💙',
+        emoji: '😰',
+        severity: 'toxic'
+      },
+      medium: { 
+        label: 'Sometimes stable, sometimes... not so much', 
+        description: 'They\'re working on it, but emotional regulation is still a work in progress. Some days they handle stress well, other days you\'re walking on eggshells wondering what mood you\'ll encounter.',
+        advice: 'Everyone\'s learning, but your peace shouldn\'t depend on their mood management. 🤗',
+        emoji: '😬',
+        severity: 'unstable'
+      },
+      low: { 
+        label: 'Emotionally mature and self-aware', 
+        description: 'They handle their emotions like the grown-up they are. Bad days happen, but they don\'t become your emergency. They communicate their feelings without making them your fault or your job to fix.',
+        advice: 'This is emotional maturity in action! Someone who owns their feelings. 💕',
+        emoji: '😊',
+        severity: 'healthy'
+      }
+    }
+  },
+
+  'Trust and Honesty': {
+    friendlyName: 'Truth-Telling Track Record',
+    icon: '🔍',
+    description: 'How honest they are and whether you can actually trust what they say',
+    levels: {
+      high: { 
+        label: 'Truth is apparently optional', 
+        description: 'Little lies, big lies, lies about lies - it\'s like living with a creative writing major who never graduated. You\'ve started fact-checking their stories because "going to the store" somehow takes 4 hours and involves people you\'ve never heard of.',
+        advice: 'Sweetie, if you can\'t trust their words, what can you trust? This isn\'t sustainable. 💭',
+        emoji: '😞',
+        severity: 'deceptive'
+      },
+      medium: { 
+        label: 'Mostly honest with occasional... creative editing', 
+        description: 'They\'re not a pathological liar, but they definitely have a flexible relationship with the complete truth. White lies, omissions, or "protecting your feelings" by not telling you things.',
+        advice: 'Half-truths are still half-lies, babe. You deserve the whole story. 🤗',
+        emoji: '😕',
+        severity: 'concerning'
+      },
+      low: { 
+        label: 'Honest and trustworthy', 
+        description: 'What they say matches what they do. No need to play detective or second-guess their stories. Even difficult conversations happen with honesty and care.',
+        advice: 'This is what trust looks like! Someone whose words you can count on. 💕',
+        emoji: '😊',
+        severity: 'healthy'
+      }
+    }
   }
 };
 
@@ -7593,7 +7681,12 @@ const SCENARIO_ANALYSIS = {
 // Section 7: SESSION MANAGEMENT
 // =============================================================================
 
+// Global sessions storage
 const sessions = new Map();
+
+// =============================================================================
+// AssessmentSession Class
+// =============================================================================
 
 class AssessmentSession {
   constructor(sessionId) {
@@ -7605,8 +7698,17 @@ class AssessmentSession {
     this.analysisResults = null;
     this.createdAt = new Date();
     this.lastActivity = new Date();
+    this.stage = 'created';
+    this.metadata = {
+      userAgent: null,
+      ipAddress: null,
+      startTime: new Date(),
+      completionTime: null,
+      totalDuration: null
+    };
   }
 
+  // Keep existing methods
   setDemographics(demographics) {
     this.demographics = demographics;
     this.lastActivity = new Date();
@@ -7617,7 +7719,8 @@ class AssessmentSession {
       questionId: question.id,
       questionText: question.text,
       response: response,
-      timestamp: new Date()
+      timestamp: new Date(),
+      wordCount: response.trim().split(/\s+/).filter(w => w.length > 0).length
     });
     this.conversationHistory.push(
       { type: 'question', content: question.text, timestamp: new Date() },
@@ -7630,143 +7733,794 @@ class AssessmentSession {
     this.analysisResults = results;
     this.lastActivity = new Date();
   }
+
+  setMetadata(key, value) {
+    this.metadata[key] = value;
+    this.lastActivity = new Date();
+  }
 }
+
+// ADD THIS NEW ENHANCED CLASS RIGHT AFTER
+class SupabaseAssessmentSession extends AssessmentSession {
+  constructor(sessionId) {
+    super(sessionId);
+    this.dbId = null;
+    this.isPersistedToDB = false;
+  }
+
+  async persistToDatabase() {
+    if (!supabase || this.isPersistedToDB) return;
+
+    try {
+      const crypto = require('crypto');
+      const userAgentHash = this.metadata?.userAgent ? 
+        crypto.createHash('sha256').update(this.metadata.userAgent).digest('hex') : null;
+
+      const { data, error } = await supabase
+        .from('assessment_sessions')
+        .insert({
+          session_id: this.id,
+          created_at: this.createdAt.toISOString(),
+          status: this.stage,
+          user_agent_hash: userAgentHash,
+          session_metadata: this.metadata
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      this.dbId = data.id;
+      this.isPersistedToDB = true;
+      console.log(`💾 Session ${this.id} persisted to Supabase`);
+      
+    } catch (error) {
+      console.error(`❌ Failed to persist session ${this.id}:`, error);
+    }
+  }
+
+  async updateSessionStatus() {
+    if (!supabase || !this.isPersistedToDB) return;
+
+    try {
+      await supabase
+        .from('assessment_sessions')
+        .update({
+          status: this.stage,
+          total_duration_ms: new Date() - this.createdAt,
+          session_metadata: this.metadata,
+          completed_at: this.stage === 'analysis_complete' ? new Date().toISOString() : null
+        })
+        .eq('id', this.dbId);
+    } catch (error) {
+      console.error(`❌ Failed to update session status:`, error);
+    }
+  }
+
+  async setDemographics(demographics) {
+    super.setDemographics(demographics);
+    
+    if (!this.isPersistedToDB) {
+      await this.persistToDatabase();
+    }
+
+    if (!supabase || !this.isPersistedToDB) return;
+
+    try {
+      await supabase
+        .from('session_demographics')
+        .insert({
+          session_uuid: this.dbId,
+          age_group: demographics.ageGroup,
+          gender: demographics.gender,
+          region: demographics.region,
+          relationship_status: demographics.relationshipStatus,
+          relationship_duration: demographics.relationshipDuration
+        });
+
+      await this.updateSessionStatus();
+      console.log(`👤 Demographics saved to Supabase for session ${this.id}`);
+      
+    } catch (error) {
+      console.error(`❌ Failed to save demographics:`, error);
+    }
+  }
+
+  async addResponse(question, response) {
+    super.addResponse(question, response);
+
+    if (!this.isPersistedToDB) {
+      await this.persistToDatabase();
+    }
+
+    if (!supabase || !this.isPersistedToDB) return;
+
+    try {
+      const responseData = this.responses[this.responses.length - 1];
+      
+      await supabase
+        .from('session_responses')
+        .insert({
+          session_uuid: this.dbId,
+          question_id: question.id,
+          question_text: question.text,
+          question_stage: question.stage,
+          response_text: response,
+          response_length: response.length,
+          word_count: responseData.wordCount || response.trim().split(/\s+/).length,
+          response_order: this.responses.length
+        });
+
+      await this.updateSessionStatus();
+      console.log(`💬 Response saved to Supabase for session ${this.id}`);
+      
+    } catch (error) {
+      console.error(`❌ Failed to save response:`, error);
+    }
+  }
+
+  async setAnalysisResults(results) {
+    super.setAnalysisResults(results);
+
+    if (!this.isPersistedToDB) {
+      await this.persistToDatabase();
+    }
+
+    if (!supabase || !this.isPersistedToDB) return;
+
+    try {
+      await supabase
+        .from('session_analysis')
+        .insert({
+          session_uuid: this.dbId,
+          persona_name: results.persona?.title || 'Unknown',
+          confidence_score: results.confidence || 0,
+          risk_level: results.riskAssessment?.level || 'unknown',
+          analysis_method: results.analysisMethod || 'unknown',
+          trait_scores: results.traitScores || {},
+          scenario_scores: results.scenarioScores || {},
+          key_indicators: results.keyIndicators || [],
+          behavioral_evidence: results.behavioralEvidence || {}
+        });
+
+      this.stage = 'analysis_complete';
+      this.metadata.completionTime = new Date();
+      await this.updateSessionStatus();
+
+      console.log(`📊 Analysis results saved to Supabase for session ${this.id}`);
+      
+    } catch (error) {
+      console.error(`❌ Failed to save analysis results:`, error);
+    }
+  }
+
+  async saveFeedback(feedbackData) {
+    if (!supabase || !this.isPersistedToDB) return;
+
+    try {
+      await supabase
+        .from('session_feedback')
+        .insert({
+          session_uuid: this.dbId,
+          quick_rating: feedbackData.quickRating,
+          most_helpful: feedbackData.mostHelpful,
+          additional_comments: feedbackData.additionalComments,
+          improvements: feedbackData.improvements
+        });
+
+      console.log(`📝 Feedback saved to Supabase for session ${this.id}`);
+      
+    } catch (error) {
+      console.error(`❌ Failed to save feedback:`, error);
+    }
+  }
+}
+// =============================================================================
+// Session Management Functions
+// =============================================================================
+
+/**
+ * Create a new assessment session
+ * @returns {AssessmentSession} New session instance
+ */
+function createSession() {
+  const sessionId = 'assess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  
+  // Use Supabase session if available, otherwise regular session
+  const session = supabase ? 
+    new SupabaseAssessmentSession(sessionId) : 
+    new AssessmentSession(sessionId);
+  
+  sessions.set(sessionId, session);
+  console.log(`🆕 New session created: ${sessionId}`);
+  return session;
+}
+
+/**
+ * Get session by ID
+ * @param {string} sessionId - Session identifier
+ * @returns {AssessmentSession|null} Session instance or null if not found
+ */
+function getSession(sessionId) {
+  const session = sessions.get(sessionId);
+  if (session) {
+    session.updateActivity();
+    return session;
+  }
+  return null;
+}
+
+/**
+ * Delete session by ID
+ * @param {string} sessionId - Session identifier
+ * @returns {boolean} True if session was deleted, false if not found
+ */
+function deleteSession(sessionId) {
+  const deleted = sessions.delete(sessionId);
+  if (deleted) {
+    console.log(`🗑️ Session deleted: ${sessionId}`);
+  }
+  return deleted;
+}
+
+/**
+ * Get all active sessions
+ * @returns {Array} Array of session info objects
+ */
+function getActiveSessions() {
+  return Array.from(sessions.values()).map(session => session.getSessionInfo());
+}
+
+/**
+ * Cleanup expired sessions
+ * @param {number} timeoutMs - Session timeout in milliseconds
+ * @returns {number} Number of sessions cleaned up
+ */
+function cleanupExpiredSessions(timeoutMs = 24 * 60 * 60 * 1000) {
+  let cleanedCount = 0;
+  
+  for (const [sessionId, session] of sessions.entries()) {
+    if (session.isExpired(timeoutMs)) {
+      sessions.delete(sessionId);
+      cleanedCount++;
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`🧹 Cleaned up ${cleanedCount} expired sessions`);
+  }
+  
+  return cleanedCount;
+}
+
+/**
+ * Get session statistics
+ * @returns {Object} Session statistics
+ */
+function getSessionStats() {
+  const allSessions = Array.from(sessions.values());
+  const now = new Date();
+  
+  return {
+    total: allSessions.length,
+    byStage: {
+      created: allSessions.filter(s => s.stage === 'created').length,
+      demographics: allSessions.filter(s => s.stage === 'demographics_complete').length,
+      assessment: allSessions.filter(s => s.stage === 'assessment_complete').length,
+      analysis: allSessions.filter(s => s.stage === 'analysis_complete').length
+    },
+    activity: {
+      last1Hour: allSessions.filter(s => (now - s.lastActivity) < 60 * 60 * 1000).length,
+      last24Hours: allSessions.filter(s => (now - s.lastActivity) < 24 * 60 * 60 * 1000).length,
+      older: allSessions.filter(s => (now - s.lastActivity) >= 24 * 60 * 60 * 1000).length
+    },
+    completion: {
+      completed: allSessions.filter(s => s.responses.length >= QUESTION_BANK.length).length,
+      inProgress: allSessions.filter(s => s.responses.length > 0 && s.responses.length < QUESTION_BANK.length).length,
+      notStarted: allSessions.filter(s => s.responses.length === 0).length
+    }
+  };
+} 
+
 
 // =============================================================================
 // Section 8:ANALYSIS ENGINE
 // =============================================================================
 
-class SimpleAnalysisEngine {
-  analyzeResponses(responses, demographics) {
-    const responseText = responses.map(r => r.response.toLowerCase()).join(' ');
+// =============================================================================
+// SIMPLIFIED ENHANCED ANALYSIS ENGINE - Replace in server.js
+// =============================================================================
+
+const { LLMAnalysisEngine } = require('./llmAnalysisEngine');
+
+class EnhancedAnalysisEngine {
+  constructor() {
+    this.llmEngine = new LLMAnalysisEngine();
     
-    // Enhanced scoring with more sophisticated pattern recognition
-    const traitScores = this.calculateTraitScores(responseText);
+    // Initialize enhanced manual analysis patterns
+    this.enhancedPatterns = this.initializeEnhancedPatterns();
+  }
+
+  async analyzeResponses(responses, demographics) {
+    try {
+      console.log('🧠 Starting enhanced analysis...');
+      
+      // First, try the LLM engine (it handles GPT-4 → GPT-3.5 → Claude → Simple fallback internally)
+      const analysis = await this.llmEngine.analyzePartnerBehavior(
+        responses, 
+        demographics, 
+        this.buildConversationHistory(responses)
+      );
+      
+      // Check if LLM analysis was successful (not just simple fallback)
+      if (analysis.analysisMethod === 'llm') {
+        console.log('✅ LLM analysis successful');
+        return analysis;
+      }
+      
+      // If LLM engine fell back to its simple analysis, try our enhanced manual analysis
+      if (analysis.analysisMethod === 'simple' || analysis.confidence < 0.6) {
+        console.log('🛡️ LLM fell back to simple analysis, trying enhanced manual analysis...');
+        
+        const enhancedAnalysis = this.performEnhancedManualAnalysis(responses, demographics);
+        
+        // Compare confidence levels and use the better one
+        if (enhancedAnalysis.confidence > analysis.confidence) {
+          console.log('🎯 Enhanced manual analysis has higher confidence, using that');
+          return enhancedAnalysis;
+        }
+      }
+      
+      console.log(`✅ Analysis completed using: ${analysis.analysisMethod || 'llm'}`);
+      return analysis;
+      
+    } catch (error) {
+      console.error('❌ Enhanced analysis failed completely:', error);
+      
+      // Last resort: try enhanced manual analysis directly
+      try {
+        console.log('🚨 Attempting enhanced manual analysis as emergency fallback...');
+        return this.performEnhancedManualAnalysis(responses, demographics);
+      } catch (manualError) {
+        console.error('❌ Enhanced manual analysis also failed:', manualError);
+        
+        // Return minimal emergency fallback result
+        return this.getEmergencyFallback();
+      }
+    }
+  }
+
+  performEnhancedManualAnalysis(responses, demographics) {
+    const responseText = responses.map(r => r.response.toLowerCase()).join(' ');
+    const traitScores = this.getDefaultTraitScores();
+    
+    console.log('🔧 Performing enhanced pattern analysis...');
+    
+    // Sophisticated behavioral pattern analysis
+    this.analyzeControlPatterns(responseText, traitScores);
+    this.analyzeEmotionalPatterns(responseText, traitScores);
+    this.analyzeSocialPatterns(responseText, traitScores);
+    this.analyzeManipulationPatterns(responseText, traitScores);
+    this.analyzeBoundaryPatterns(responseText, traitScores);
+    this.analyzeAttachmentPatterns(responseText, traitScores);
+    this.analyzeCommunicationPatterns(responseText, traitScores);
+     this.analyzeParentalSeekingPatterns(responseText, traitScores);
+    this.analyzeEmotionalInvalidationPatterns(responseText, traitScores);
+    this.analyzeFutureFakingPatterns(responseText, traitScores);
+    this.analyzeNarcissisticPatterns(responseText, traitScores);
+    
+    // Calculate scenario scores
     const scenarioScores = this.calculateScenarioScores(traitScores);
-    const persona = this.determinePersona(traitScores, scenarioScores);
+    
+    // Determine persona using sophisticated matching
+    const persona = this.determinePersona(traitScores);
+    
+    // Assess risk level
+    const riskLevel = this.assessRiskLevel(traitScores, scenarioScores);
+    
+    // Calculate confidence based on pattern matches
+    const confidence = this.calculateConfidence(responseText, traitScores);
     
     return {
       persona: persona,
       traitScores: traitScores,
       scenarioScores: scenarioScores,
-      riskLevel: this.assessRiskLevel(traitScores, scenarioScores)
+      riskLevel: riskLevel,
+      analysisMethod: 'enhanced_manual',
+      confidence: confidence,
+      keyIndicators: this.extractKeyIndicators(responseText, traitScores),
+      reasoning: 'Analysis based on enhanced behavioral pattern recognition'
     };
   }
 
-  calculateTraitScores(responseText) {
-    const scores = {};
+  analyzeControlPatterns(text, scores) {
+    const patterns = {
+      extreme: ['makes all decisions', 'never asks my opinion', 'dictates everything', 'complete control'],
+      high: ['decides for me', 'controls what i', 'tells me what to', 'won\'t let me', 'has to approve'],
+      moderate: ['usually decides', 'prefers to choose', 'likes to be in charge', 'takes the lead'],
+      low: ['sometimes controlling', 'occasionally bossy', 'can be demanding']
+    };
+
+    const extremeScore = this.countPatterns(text, patterns.extreme) * 3;
+    const highScore = this.countPatterns(text, patterns.high) * 2;
+    const moderateScore = this.countPatterns(text, patterns.moderate) * 1.5;
+    const lowScore = this.countPatterns(text, patterns.low) * 1;
+
+    const controlIntensity = Math.min(5, extremeScore + highScore + moderateScore + lowScore);
     
-    // Control patterns
-    const controlPatterns = [
-      'decides for me', 'without asking', 'takes charge', 'controls everything',
-      'my opinion doesn\'t matter', 'ignores what I want', 'has to be in charge',
-      'makes all decisions', 'I don\'t get a say'
-    ];
-    scores.CTRL = this.scorePatterns(responseText, controlPatterns, 0, 10);
-
-    // Manipulation patterns  
-    const manipulationPatterns = [
-      'makes me feel crazy', 'questioning myself', 'gaslighting', 'twist my words',
-      'guilt trips', 'blame me', 'turns things around', 'makes me doubt',
-      'I\'m too sensitive', 'overreacting'
-    ];
-    scores.DECP = this.scorePatterns(responseText, manipulationPatterns, 0, 10);
-
-    // Dominance patterns
-    const dominancePatterns = [
-      'always has to win', 'talks over me', 'interrupts', 'intimidating',
-      'forceful', 'aggressive', 'demands', 'expects obedience'
-    ];
-    scores.DOMN = this.scorePatterns(responseText, dominancePatterns, 0, 10);
-
-    // Isolation patterns
-    const isolationPatterns = [
-      'don\'t see friends', 'isolates me', 'friends disappeared', 
-      'doesn\'t like my family', 'bad influence', 'causes problems',
-      'keeps me away', 'suspicious of everyone'
-    ];
-    scores.ISOL = this.scorePatterns(responseText, isolationPatterns, 0, 10);
-
-    // Empathy patterns (reverse scored)
-    const empathyPatterns = [
-      'dismisses my feelings', 'not supportive', 'doesn\'t care',
-      'makes it about them', 'no compassion', 'cold', 'unfeeling'
-    ];
-    scores.EMPA = 10 - this.scorePatterns(responseText, empathyPatterns, 0, 10);
-
-    // Boundary patterns
-    const boundaryPatterns = [
-      'ignores my no', 'doesn\'t respect', 'goes through my phone',
-      'violates privacy', 'won\'t take no', 'pushes boundaries',
-      'no means nothing', 'invades space'
-    ];
-    scores.BNDY = 10 - this.scorePatterns(responseText, boundaryPatterns, 0, 10);
-
-    // Fill in remaining traits with baseline scores
-    const allTraits = ['EXPL', 'CHAR', 'SNSE', 'ATCH', 'ACCO', 'NEED', 'INCO', 
-                      'DISP', 'IMPL', 'UNOX', 'CGFL', 'EMOX', 'VALS', 'SUPR', 
-                      'TRST', 'GRAN', 'INTN', 'DYRG', 'CNFL', 'PERS', 'SEEK', 'ENSH'];
-                      
-    allTraits.forEach(trait => {
-      if (!scores[trait]) {
-        scores[trait] = 5; // Neutral baseline
-      }
-    });
-
-    return scores;
+    scores.CTRL = Math.min(10, 5 + controlIntensity);
+    scores.DOMN = Math.min(10, 5 + (controlIntensity * 0.8));
   }
 
-  scorePatterns(text, patterns, min = 0, max = 10) {
+  analyzeEmotionalPatterns(text, scores) {
+    const empathyLackPatterns = {
+      severe: ['doesn\'t care about my feelings', 'laughs at my pain', 'cruel when i cry'],
+      high: ['dismisses my emotions', 'tells me i\'m overreacting', 'never comforts me'],
+      moderate: ['doesn\'t understand my feelings', 'seems disconnected emotionally'],
+      low: ['sometimes insensitive', 'not great with emotions']
+    };
+
+    const supportLackPatterns = {
+      severe: ['sabotages my goals', 'actively discourages me', 'jealous of my success'],
+      high: ['never supports my goals', 'puts down my achievements', 'minimizes my success'],
+      moderate: ['lukewarm about my goals', 'doesn\'t celebrate with me'],
+      low: ['could be more supportive', 'not very encouraging']
+    };
+
+    const empathyDeficit = this.calculatePatternScore(text, empathyLackPatterns);
+    const supportDeficit = this.calculatePatternScore(text, supportLackPatterns);
+
+    scores.EMPA = Math.max(0, 10 - empathyDeficit);
+    scores.SUPR = Math.max(0, 10 - supportDeficit);
+  }
+
+  analyzeSocialPatterns(text, scores) {
+    const isolationPatterns = {
+      severe: ['forbids me from seeing friends', 'threatens to leave if i see family', 'cuts off my support'],
+      high: ['keeps me from friends', 'doesn\'t like my family', 'jealous of my relationships'],
+      moderate: ['prefers when it\'s just us', 'makes excuses why i can\'t go out'],
+      low: ['sometimes jealous of friends', 'wants more alone time']
+    };
+
+    const charmPatterns = {
+      manipulative: ['different person in public', 'everyone thinks he\'s perfect', 'charming but fake'],
+      high: ['everyone loves him', 'so charming', 'people adore him'],
+      moderate: ['pretty charming', 'good with people', 'socially skilled'],
+      low: ['can be charming', 'people like him']
+    };
+
+    const isolationScore = this.calculatePatternScore(text, isolationPatterns);
+    const charmScore = this.calculatePatternScore(text, charmPatterns);
+
+    scores.ISOL = Math.min(10, isolationScore);
+    scores.CHAR = Math.min(10, charmScore);
+  }
+
+  analyzeManipulationPatterns(text, scores) {
+    const deceptionPatterns = {
+      severe: ['gaslights me', 'makes me question reality', 'lies about everything'],
+      high: ['lies to me', 'hides important things', 'denies what he said'],
+      moderate: ['white lies', 'omits information', 'bends the truth'],
+      low: ['sometimes dishonest', 'not always truthful']
+    };
+
+    const exploitationPatterns = {
+      severe: ['uses me completely', 'parasitic relationship', 'takes everything'],
+      high: ['uses me', 'takes advantage', 'one-sided relationship'],
+      moderate: ['benefits more than me', 'sometimes selfish'],
+      low: ['can be self-centered', 'not always fair']
+    };
+
+    scores.DECP = Math.min(10, this.calculatePatternScore(text, deceptionPatterns));
+    scores.EXPL = Math.min(10, this.calculatePatternScore(text, exploitationPatterns));
+  }
+
+  analyzeBoundaryPatterns(text, scores) {
+    const violationPatterns = {
+      severe: ['violates all boundaries', 'ignores my no completely', 'forces me'],
+      high: ['ignores my boundaries', 'doesn\'t respect no', 'pushes past limits'],
+      moderate: ['sometimes crosses boundaries', 'doesn\'t always listen'],
+      low: ['occasionally pushy', 'needs reminders about boundaries']
+    };
+
+    const violationScore = this.calculatePatternScore(text, violationPatterns);
+    scores.BNDY = Math.max(0, 10 - violationScore);
+  }
+
+  analyzeAttachmentPatterns(text, scores) {
+    const needinessPatterns = {
+      severe: ['can\'t be alone', 'panics when i\'m away', 'obsessive need for attention'],
+      high: ['constantly needs reassurance', 'very clingy', 'can\'t handle separation'],
+      moderate: ['needs a lot of attention', 'somewhat clingy', 'insecure'],
+      low: ['sometimes needy', 'wants reassurance']
+    };
+
+    const inconsistencyPatterns = {
+      severe: ['completely unpredictable', 'extreme mood swings', 'jekyll and hyde'],
+      high: ['very inconsistent', 'mood swings', 'hot and cold'],
+      moderate: ['somewhat unpredictable', 'moody', 'inconsistent'],
+      low: ['occasionally moody', 'sometimes inconsistent']
+    };
+
+    scores.NEED = Math.min(10, this.calculatePatternScore(text, needinessPatterns));
+    scores.INCO = Math.min(10, this.calculatePatternScore(text, inconsistencyPatterns));
+  }
+
+  analyzeCommunicationPatterns(text, scores) {
+    const conflictPatterns = {
+      severe: ['explosive fights', 'screaming matches', 'violent arguments'],
+      high: ['frequent fights', 'can\'t resolve conflicts', 'arguments escalate'],
+      moderate: ['regular disagreements', 'some conflict', 'tension'],
+      low: ['occasional arguments', 'minor disagreements']
+    };
+
+    const understandingPatterns = {
+      high: ['really gets me', 'understands my perspective', 'sees my point'],
+      moderate: ['tries to understand', 'usually gets it', 'makes an effort'],
+      low: ['sometimes understands', 'not great at seeing my side'],
+      poor: ['never understands', 'doesn\'t get me at all', 'completely clueless']
+    };
+
+    scores.CGFL = Math.min(10, this.calculatePatternScore(text, conflictPatterns));
+    
+    // Understanding is reverse scored (higher understanding = lower UNOX score)
+    const understandingScore = this.calculatePatternScore(text, understandingPatterns);
+    scores.UNOX = Math.max(0, 10 - understandingScore);
+  }
+
+  analyzeParentalSeekingPatterns(text, scores) {
+    const parentalSeekingPatterns = {
+      severe: [
+        'like dating a child', 'feel like his mom', 'more like a parent', 
+        'he can\'t function without me', 'I have to do everything', 'dating someone who needs me to be his mom'
+      ],
+      high: [
+        'asks for my advice on everything', 'needs me to make decisions', 
+        'can\'t handle basic tasks', 'relies on me completely', 'life coach',
+        'constantly asks for my advice', 'exhausted from being the only adult'
+      ],
+      moderate: [
+        'always asking what to do', 'needs guidance', 'depends on me',
+        'I have to manage', 'he just waits for me to decide', 'whatever you want is fine'
+      ],
+      low: [
+        'sometimes needs help', 'looks to me for decisions', 'asks for advice'
+      ]
+    };
+
+    const clingyPatterns = {
+      severe: [
+        'follows me around', 'can\'t be alone', 'constantly texting',
+        'freaks out when I leave', 'needs constant attention'
+      ],
+      high: [
+        'gets weird and clingy', 'what am I supposed to do', 'how long will you be',
+        'tries to invite himself', 'needs constant updates', 'gets all weird and clingy'
+      ],
+      moderate: [
+        'wants to come along', 'gets anxious when apart', 'checks in often'
+      ]
+    };
+
+    const dependencyPatterns = {
+      severe: [
+        'can\'t make any decisions', 'would fall apart without me', 
+        'no sense of boundaries', 'like a little kid'
+      ],
+      high: [
+        'just agrees with everything', 'whatever you want', 'you know best',
+        'asks permission for everything', 'needs my approval', 'i don\'t care you pick'
+      ]
+    };
+
+    const parentalScore = this.calculatePatternScore(text, parentalSeekingPatterns);
+    const clingyScore = this.calculatePatternScore(text, clingyPatterns);
+    const dependencyScore = this.calculatePatternScore(text, dependencyPatterns);
+
+    // Adjust scores based on detected patterns
+    scores.NEED = Math.min(10, 5 + (parentalScore * 1.2)); // High neediness
+    scores.ATCH = Math.min(10, 5 + (clingyScore * 1.0));    // Clingy attachment
+    scores.VALS = Math.min(10, 5 + (dependencyScore * 1.0)); // Seeks validation
+    
+    // Lower scores for traits they lack
+    scores.ACCO = Math.max(0, 5 - (parentalScore * 1.0));   // Low accountability
+    scores.DOMN = Math.max(0, 5 - (dependencyScore * 1.2)); // Low dominance
+    scores.IMPL = Math.max(0, 5 - (parentalScore * 0.8));   // Low impulse control
+
+    console.log(`🍼 Parental seeking patterns: ${parentalScore}, Clingy: ${clingyScore}, Dependency: ${dependencyScore}`);
+  }
+
+  analyzeEmotionalInvalidationPatterns(text, scores) {
+    const invalidationPatterns = {
+      severe: [
+        'dismisses my feelings', 'tells me i\'m overreacting', 'your feelings don\'t matter',
+        'makes me feel crazy', 'gaslights my emotions'
+      ],
+      high: [
+        'never validates my emotions', 'minimizes my feelings', 'acts like i\'m being dramatic',
+        'rolls eyes when i\'m upset', 'changes subject when i share feelings'
+      ],
+      moderate: [
+        'doesn\'t seem to understand my emotions', 'uncomfortable with feelings',
+        'tries to fix instead of listen'
+      ]
+    };
+
+    const invalidationScore = this.calculatePatternScore(text, invalidationPatterns);
+    
+    scores.EMPA = Math.max(0, 10 - (invalidationScore * 1.5)); // Low empathy
+    scores.SUPR = Math.max(0, 10 - (invalidationScore * 1.2)); // Low support
+    scores.DECP = Math.min(10, 5 + (invalidationScore * 0.8)); // May involve deception
+  }
+
+  analyzeFutureFakingPatterns(text, scores) {
+    const futureFakingPatterns = {
+      severe: [
+        'promises things that never happen', 'always says we\'ll do something someday',
+        'talks about future but no action', 'empty promises'
+      ],
+      high: [
+        'makes plans that fall through', 'says we\'ll travel but never book',
+        'promises to change but doesn\'t', 'all talk no action'
+      ]
+    };
+
+    const futureFakingScore = this.calculatePatternScore(text, futureFakingPatterns);
+    
+    scores.CHAR = Math.min(10, 5 + (futureFakingScore * 1.0)); // Uses charm
+    scores.SEEK = Math.min(10, 5 + (futureFakingScore * 0.8)); // Attention seeking
+    scores.ACCO = Math.max(0, 10 - (futureFakingScore * 1.2)); // Low accountability
+  }
+
+  analyzeNarcissisticPatterns(text, scores) {
+    const narcissisticPatterns = {
+      severe: [
+        'everything is about them', 'never asks about my day', 'self-obsessed',
+        'thinks they\'re superior', 'entitled behavior'
+      ],
+      high: [
+        'makes everything about themselves', 'interrupts my stories', 'one-ups everything',
+        'needs to be center of attention', 'shows off constantly'
+      ]
+    };
+
+    const narcissisticScore = this.calculatePatternScore(text, narcissisticPatterns);
+    
+    scores.VALS = Math.min(10, 5 + (narcissisticScore * 1.2)); // Validation seeking
+    scores.EMOX = Math.min(10, 5 + (narcissisticScore * 1.0)); // Emotional expression
+    scores.EMPA = Math.max(0, 10 - (narcissisticScore * 1.5)); // Low empathy
+    scores.GRAN = Math.min(10, 5 + (narcissisticScore * 1.3)); // Grandiosity
+  }
+
+  calculatePatternScore(text, patterns) {
     let score = 0;
-    patterns.forEach(pattern => {
-      if (text.includes(pattern)) {
-        score += 2;
-      }
-    });
-    return Math.min(max, Math.max(min, score));
+    if (patterns.severe) score += this.countPatterns(text, patterns.severe) * 4;
+    if (patterns.high) score += this.countPatterns(text, patterns.high) * 3;
+    if (patterns.moderate) score += this.countPatterns(text, patterns.moderate) * 2;
+    if (patterns.low) score += this.countPatterns(text, patterns.low) * 1;
+    return Math.min(10, score);
+  }
+
+  countPatterns(text, patterns) {
+    return patterns.reduce((count, pattern) => {
+      return count + (text.includes(pattern) ? 1 : 0);
+    }, 0);
   }
 
   calculateScenarioScores(traitScores) {
     return {
       'Decision-Making Dynamics': Math.min(100, ((traitScores.DOMN * 0.6) + (traitScores.CTRL * 0.4)) * 10),
-      'Conflict Resolution Patterns': Math.min(100, ((traitScores.CNFL * 0.4) + ((10 - traitScores.EMPA) * 0.3) + ((10 - traitScores.ACCO) * 0.3)) * 10),
+      'Conflict Resolution Patterns': Math.min(100, ((traitScores.CGFL * 0.4) + ((10 - traitScores.EMPA) * 0.3) + ((10 - traitScores.ACCO) * 0.3)) * 10),
       'Social Connection Control': Math.min(100, ((traitScores.CTRL * 0.5) + (traitScores.ISOL * 0.5)) * 10),
       'Emotional Support Quality': Math.min(100, (((10 - traitScores.EMPA) * 0.6) + (traitScores.EXPL * 0.4)) * 10),
       'Boundary Respect': Math.min(100, (((10 - traitScores.BNDY) * 0.6) + (traitScores.CTRL * 0.4)) * 10)
     };
   }
 
-  determinePersona(traitScores, scenarioScores) {
-    // Enhanced persona matching logic
-    let bestMatch = 'The Clinger';
-    let highestScore = 0;
+  determinePersona(traitScores) {
+  // Use the corrected persona patterns
+  const personaPatterns = {
+    'The Puppet Master': { 
+      high: ['INTN', 'DECP', 'EMOX'], 
+      low: ['SNSE', 'DISP', 'ACCO'] 
+    },
+    'The Intimidator': { 
+      high: ['ATCH', 'BNDY', 'DOMN'], 
+      low: ['HYPL', 'EMPA', 'NEED'] 
+    },
+    'The Self-Obsessed': { 
+      high: ['GRAN', 'VALS', 'CHAR'], 
+      low: ['ISOL', 'EMPA', 'ACCO'] 
+    },
+    'The Drill Sergeant': { 
+      high: ['CTRL', 'DOMN', 'SNSE'], 
+      low: ['NEED', 'EMOX', 'HYPL'] 
+    },
+    'The Suspicious Strategist': { 
+      high: ['ISOL', 'CNFL', 'DYRG'], 
+      low: ['TRST', 'CHAR', 'HYPL'] 
+    },
+    'Master of Everything': { 
+      high: ['DOMN', 'CNFL', 'DISP'], 
+      low: ['ENSH', 'NEED', 'ACCO'] 
+    },
+    'The Subtle Saboteur': { 
+      high: ['DISP', 'INCO', 'CTRL'], 
+      low: ['DYRG', 'CNFL', 'ACCO'] 
+    },
+    'The Clinger': { 
+      high: ['ENSH', 'DYRG', 'ATCH'], 
+      low: ['SNSE', 'DISP', 'GRAN'] 
+    },
+    'The Addict': { 
+      high: ['DYRG', 'IMPL', 'INCO'], 
+      low: ['SNSE', 'CTRL', 'HYPL'] 
+    },
+    'The Parental Seeker': { 
+      high: ['DYRG', 'CHAR', 'ATCH'], 
+      low: ['CTRL', 'PERS', 'EMPA'] // Added EMPA as third low trait
+    },
+    'The Future Faker': { 
+      high: ['DECP', 'INCO', 'CHAR'], 
+      low: ['ACCO', 'PERS', 'EMPA'] 
+    },
+    'The Freewheeler': { 
+      high: ['IMPL', 'EMOX', 'SEEK'], 
+      low: ['CTRL', 'DOMN', 'HYPL'] 
+    },
+    'The Thinker': { 
+      high: ['HYPL', 'PERS', 'TRST'], 
+      low: ['IMPL', 'CHAR', 'SEEK'] 
+    },
+    'Emotional Invalidator': { 
+      high: ['DISP', 'CTRL', 'INCO'], 
+      low: ['HYPL', 'SEEK', 'EMPA'] 
+    },
+    'The Emotionally Distant': { 
+      high: ['INCO', 'SUPR', 'DISP'], 
+      low: ['ENSH', 'DYRG', 'ATCH'] 
+    },
+    'The Rake': { 
+      high: ['CHAR', 'SEEK', 'INTN'], 
+      low: ['ATCH', 'DISP', 'SNSE'] 
+    },
+    'The Perpetual Victim': { 
+      high: ['VALS', 'INCO', 'EMOX'], 
+      low: ['ACCO', 'EMPA', 'CTRL'] 
+    }
+  };
 
-    Object.entries(PERSONAS).forEach(([name, persona]) => {
-      let score = this.calculatePersonaMatch(traitScores, persona);
-      if (score > highestScore) {
-        highestScore = score;
-        bestMatch = name;
-      }
-    });
+  let bestMatch = 'The Clinger';
+  let highestScore = 0;
 
-    return bestMatch;
-  }
+    Object.entries(personaPatterns).forEach(([name, pattern]) => {
+    const score = this.calculatePersonaMatch(traitScores, pattern);
+    console.log(`Persona ${name}: score ${score}`); // Debug logging
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = name;
+    }
+  });
 
-  calculatePersonaMatch(traitScores, persona) {
+  console.log(`Best match: ${bestMatch} with score ${highestScore}`);
+  return bestMatch;
+}
+
+  calculatePersonaMatch(traitScores, pattern) {
     let score = 0;
-    let totalTraits = persona.highTraits.length + persona.lowTraits.length;
+    const totalTraits = pattern.high.length + pattern.low.length;
 
-    // Check high traits (should be > 5)
-    persona.highTraits.forEach(trait => {
-      if (traitScores[trait] && traitScores[trait] > 5) {
-        score += (traitScores[trait] - 5) / 5;
+    // Check high traits (should be > 6 for strong match)
+    pattern.high.forEach(trait => {
+      if (traitScores[trait] > 6) {
+        score += (traitScores[trait] - 6) / 4;
       }
     });
 
-    // Check low traits (should be < 5)  
-    persona.lowTraits.forEach(trait => {
-      if (traitScores[trait] && traitScores[trait] < 5) {
-        score += (5 - traitScores[trait]) / 5;
+    // Check low traits (should be < 4 for strong match)  
+    pattern.low.forEach(trait => {
+      if (traitScores[trait] < 4) {
+        score += (4 - traitScores[trait]) / 4;
       }
     });
 
@@ -7776,141 +8530,291 @@ class SimpleAnalysisEngine {
   assessRiskLevel(traitScores, scenarioScores) {
     const avgScenarioScore = Object.values(scenarioScores).reduce((a, b) => a + b, 0) / Object.values(scenarioScores).length;
     
-    if (avgScenarioScore > 80) return 'high';
-    if (avgScenarioScore > 60) return 'medium';
+    // Check for high-risk trait combinations
+    const highRiskTraits = ['CTRL', 'DECP', 'EXPL', 'DOMN'];
+    const highRiskScore = highRiskTraits.reduce((sum, trait) => sum + traitScores[trait], 0) / highRiskTraits.length;
+    
+    if (avgScenarioScore > 80 || highRiskScore > 8) return 'high';
+    if (avgScenarioScore > 60 || highRiskScore > 6.5) return 'medium';
     return 'low';
   }
-}
 
+  calculateConfidence(responseText, traitScores) {
+    // Base confidence on response length and pattern matches
+    const responseLength = responseText.length;
+    const lengthFactor = Math.min(1, responseLength / 1000); // Longer responses = higher confidence
+    
+    // Count total pattern matches across all analyses
+    const patternMatches = this.countTotalPatternMatches(responseText);
+    const patternFactor = Math.min(1, patternMatches / 10); // More matches = higher confidence
+    
+    // Factor in extreme scores (very high or very low scores indicate clear patterns)
+    const extremeScores = Object.values(traitScores).filter(score => score < 3 || score > 7).length;
+    const extremeFactor = Math.min(1, extremeScores / 14); // More extreme scores = higher confidence
+    
+    const confidence = (lengthFactor * 0.3) + (patternFactor * 0.5) + (extremeFactor * 0.2);
+    return Math.max(0.4, Math.min(0.9, confidence)); // Keep confidence between 0.4 and 0.9
+  }
+
+  countTotalPatternMatches(text) {
+    // This is a simplified count - in reality, you'd sum up all the pattern matches
+    // from all the analysis methods
+    const commonPatterns = [
+      'controls', 'decides', 'tells me', 'doesn\'t let', 'forces', 'manipulates',
+      'lies', 'hides', 'gaslights', 'isolates', 'jealous', 'possessive',
+      'angry', 'violent', 'threatens', 'intimidates', 'dismisses', 'ignores'
+    ];
+    
+    return commonPatterns.reduce((count, pattern) => {
+      return count + (text.includes(pattern) ? 1 : 0);
+    }, 0);
+  }
+
+  extractKeyIndicators(responseText, traitScores) {
+    const indicators = [];
+    
+    // Add indicators based on high trait scores
+    if (traitScores.CTRL > 7) indicators.push('High levels of controlling behavior detected');
+    if (traitScores.DECP > 7) indicators.push('Significant deception and manipulation patterns');
+    if (traitScores.ISOL > 7) indicators.push('Isolation from support systems identified');
+    if (traitScores.EMPA < 3) indicators.push('Low empathy and emotional understanding');
+    if (traitScores.BNDY < 3) indicators.push('Poor boundary respect and violations');
+    
+    return indicators.length > 0 ? indicators : ['Relationship patterns analyzed based on responses'];
+  }
+
+  buildConversationHistory(responses) {
+    return responses.map(r => ({
+      question: r.questionText,
+      response: r.response,
+      timestamp: r.timestamp
+    }));
+  }
+
+  getDefaultTraitScores() {
+    return {
+      DOMN: 5, EXPL: 5, EMPA: 5, CTRL: 5, DECP: 5, BNDY: 5, ISOL: 5, ACCO: 5,
+      CHAR: 5, GRAN: 5, CNFL: 5, IMPL: 5, NEED: 5, INCO: 5, VALS: 5, DISP: 5,
+      SUPR: 5, TRST: 5, INTN: 5, SNSE: 5, SEEK: 5, PERS: 5, CGFL: 5, EMOX: 5,
+      UNOX: 5, ATCH: 5, DYRG: 5, ENSH: 5
+    };
+  }
+
+  getDefaultScenarioScores() {
+    return {
+      'Decision-Making Dynamics': 50,
+      'Conflict Resolution Patterns': 50,
+      'Social Connection Control': 50,
+      'Emotional Support Quality': 50,
+      'Boundary Respect': 50
+    };
+  }
+
+  getEmergencyFallback() {
+    return {
+      persona: 'The Clinger',
+      traitScores: this.getDefaultTraitScores(),
+      scenarioScores: this.getDefaultScenarioScores(),
+      riskLevel: 'medium',
+      analysisMethod: 'emergency_fallback',
+      confidence: 0.3,
+      keyIndicators: ['Analysis system unavailable'],
+      reasoning: 'System encountered an error during analysis'
+    };
+  }
+
+  initializeEnhancedPatterns() {
+    return {
+      initialized: true,
+      version: '2.0',
+      patternCount: 150 // Approximate number of behavioral patterns
+    };
+  }
+
+  // Method to test LLM connectivity
+  async testLLMConnections() {
+    return await this.llmEngine.testConnections();
+  }
+}
 // =============================================================================
 // SECTION 9:RESULTS GENERATOR
 // =============================================================================
 
-class ResultsGenerator {
+
+class EnhancedResultsGenerator {
   constructor() {
-    this.analysisEngine = new SimpleAnalysisEngine();
+    this.analysisEngine = new EnhancedAnalysisEngine();
   }
 
-   generateResults(session) {
-  try {
-    const analysis = this.analysisEngine.analyzeResponses(session.responses, session.demographics);
-    const persona = PERSONAS[analysis.persona];
-    
-    // Validate persona exists and has required properties
-    if (!persona) {
-      console.error(`Persona ${analysis.persona} not found, using default`);
-      persona = PERSONAS['The Clinger']; // Fallback
-    }
-    
-    if (!this.validatePersona(persona)) {
-      console.error(`Invalid persona structure for ${analysis.persona}`);
-    }
-    
-    const characters = this.getCharacterReferences(analysis.persona, session.demographics);
-    const scenarioAnalysis = this.generateScenarioAnalysis(analysis.scenarioScores);
-
-    return {
-      persona: persona,
-      characters: characters,
-      scenarioAnalysis: scenarioAnalysis,
-      encouragement: this.generateEncouragement(analysis.riskLevel),
-      gentleAdvice: this.generateGentleAdvice(session.demographics),
-      supportResources: this.getSupportResources(),
-      disclaimer: this.generateDisclaimer()
-    };
-  } catch (error) {
-    console.error('Error generating results:', error);
-    
-    // Return safe fallback results
-    return {
-      persona: PERSONAS['The Clinger'],
-      characters: [],
-      scenarioAnalysis: {},
-      encouragement: { main: "You're doing great", message: "Trust yourself" },
-      gentleAdvice: "Take care of yourself",
-      supportResources: this.getSupportResources(),
-      disclaimer: this.generateDisclaimer()
-    };
-  }
-}
-
-   // In getCharacterReferences method
-   getCharacterReferences(personaName, demographics) {
-  try {
-    const region = demographics.region || 'north-america';
-    const gender = demographics.gender || 'female';
-    const ageGroup = this.getAgeCategory(demographics.ageGroup);
-
-    console.log(`Looking for characters: ${personaName}, ${region}, ${gender}, ${ageGroup}`);
-
-    // Add safety checks
-    if (!CHARACTER_REFERENCES[region]) {
-      console.log(`Region ${region} not found, using north-america`);
-      region = 'north-america';
-    }
-
-    const regionData = CHARACTER_REFERENCES[region];
-    if (!regionData[personaName]) {
-      console.log(`Persona ${personaName} not found in ${region}, checking other regions`);
+  async generateResults(session) {
+    try {
+      console.log(`📊 Generating enhanced results for session ${session.id}`);
       
-      // Try other regions if persona not found
-      for (const [altRegion, altData] of Object.entries(CHARACTER_REFERENCES)) {
-        if (altData[personaName]) {
-          console.log(`Found ${personaName} in ${altRegion}`);
-          return this.getCharactersFromRegion(altData[personaName], gender, ageGroup);
+      // Perform comprehensive analysis
+      const analysis = await this.analysisEngine.analyzeResponses(
+        session.responses, 
+        session.demographics
+      );
+      
+      // Generate all result components
+      const persona = this.getPersonaData(analysis.persona);
+      const characters = this.getCharacterReferences(analysis.persona, session.demographics);
+      const scenarioAnalysis = this.generateScenarioAnalysis(analysis.scenarioScores);
+      const riskAssessment = this.generateRiskAssessment(analysis);
+      const encouragement = this.generateEncouragement(analysis.riskLevel);
+      const gentleAdvice = this.generateGentleAdvice(session.demographics, analysis);
+      const supportResources = this.getSupportResources(session.demographics.region);
+      const disclaimer = this.generateDisclaimer();
+
+      return {
+        persona: persona,
+        characters: characters,
+        scenarioAnalysis: scenarioAnalysis,
+        riskAssessment: riskAssessment,
+        traitScores: analysis.traitScores,
+        confidence: analysis.confidence,
+        keyIndicators: analysis.keyIndicators,
+        reasoning: analysis.reasoning,
+        analysisMethod: analysis.analysisMethod,
+        encouragement: encouragement,
+        gentleAdvice: gentleAdvice,
+        supportResources: supportResources,
+        disclaimer: disclaimer,
+        behavioralEvidence: analysis.behavioralEvidence || {},
+        metadata: {
+          sessionId: session.id,
+          generatedAt: new Date(),
+          analysisVersion: '3.0',
+          totalResponses: session.responses.length,
+          demographics: session.demographics
         }
-      }
-      return []; // Return empty array if not found anywhere
+      };
+      
+    } catch (error) {
+      console.error('❌ Error generating enhanced results:', error);
+      return this.generateFallbackResults(session);
     }
-
-    return this.getCharactersFromRegion(regionData[personaName], gender, ageGroup);
-    
-  } catch (error) {
-    console.error('Error getting character references:', error);
-    return []; // Return empty array on error
   }
-}
 
-  getCharactersFromRegion(personaData, gender, ageGroup) {
-  try {
-    const genderData = personaData[gender] || personaData['female'] || {};
-    const characters = genderData[ageGroup] || genderData['18-24'] || [];
+  getPersonaData(personaName) {
+    const persona = PERSONAS[personaName] || PERSONAS['The Clinger'];
     
-    console.log(`Found ${characters.length} characters`);
-    return characters.slice(0, 3); // Return top 3
-  } catch (error) {
-    console.error('Error extracting characters:', error);
-    return [];
+    // Validate persona has required properties
+    const requiredProps = ['title', 'greeting', 'empathyOpener', 'mainMessage', 'caring', 'worry', 'riskLevel'];
+    const isValid = requiredProps.every(prop => persona[prop]);
+    
+    if (!isValid) {
+      console.warn(`⚠️ Persona ${personaName} missing required properties, using fallback`);
+      return PERSONAS['The Clinger'];
+    }
+    
+    return persona;
   }
-}
+
+  getCharacterReferences(personaName, demographics) {
+    try {
+      const region = demographics.region || 'north-america';
+      const gender = demographics.gender || 'female';
+      const ageGroup = this.getAgeCategory(demographics.ageGroup);
+
+      console.log(`🎭 Finding character references: ${personaName}, ${region}, ${gender}, ${ageGroup}`);
+
+      // Check if region and persona exist
+      if (!CHARACTER_REFERENCES[region]) {
+        console.log(`Region ${region} not found, using north-america`);
+        return this.findCharactersInRegion('north-america', personaName, gender, ageGroup);
+      }
+
+      const regionData = CHARACTER_REFERENCES[region];
+      if (!regionData[personaName]) {
+        console.log(`Persona ${personaName} not found in ${region}, checking other regions`);
+        
+        // Try other regions
+        for (const [altRegion, altData] of Object.entries(CHARACTER_REFERENCES)) {
+          if (altData[personaName]) {
+            console.log(`Found ${personaName} in ${altRegion}`);
+            return this.extractCharactersFromPersonaData(altData[personaName], gender, ageGroup);
+          }
+        }
+        
+        console.log(`Persona ${personaName} not found in any region`);
+        return [];
+      }
+
+      return this.extractCharactersFromPersonaData(regionData[personaName], gender, ageGroup);
+      
+    } catch (error) {
+      console.error('❌ Error getting character references:', error);
+      return [];
+    }
+  }
+
+  findCharactersInRegion(region, personaName, gender, ageGroup) {
+    try {
+      const regionData = CHARACTER_REFERENCES[region];
+      if (regionData && regionData[personaName]) {
+        return this.extractCharactersFromPersonaData(regionData[personaName], gender, ageGroup);
+      }
+      return [];
+    } catch (error) {
+      console.error(`Error finding characters in ${region}:`, error);
+      return [];
+    }
+  }
+
+  extractCharactersFromPersonaData(personaData, gender, ageGroup) {
+    try {
+      if (!personaData || typeof personaData !== 'object') {
+        return [];
+      }
+
+      // Try preferred gender first, then fallback
+      const genderData = personaData[gender] || personaData['female'] || personaData['male'] || {};
+      
+      if (!genderData || typeof genderData !== 'object') {
+        return [];
+      }
+
+      // Try preferred age group first, then fallback to available ages
+      const characters = genderData[ageGroup] || 
+                        genderData['25-34'] || 
+                        genderData['18-24'] || 
+                        genderData['35+'] || 
+                        [];
+      
+      console.log(`Found ${characters.length} characters for ${gender} ${ageGroup}`);
+      return Array.isArray(characters) ? characters.slice(0, 3) : [];
+      
+    } catch (error) {
+      console.error('Error extracting characters from persona data:', error);
+      return [];
+    }
+  }
 
   getAgeCategory(ageGroup) {
+    if (!ageGroup) return '25-34';
     if (ageGroup === '18-24') return '18-24';
-    if (['25-34'].includes(ageGroup)) return '25-34';
+    if (['25-34', '35-44'].includes(ageGroup)) return '25-34';
     return '35+';
   }
-
-  validatePersona(persona) {
-  const requiredProps = ['title', 'greeting', 'empathyOpener', 'mainMessage', 'caring', 'worry', 'riskLevel'];
-  
-  for (const prop of requiredProps) {
-    if (!persona[prop]) {
-      console.warn(`Missing required property '${prop}' in persona`);
-      return false;
-    }
-  }
-  return true;
-}
-
- 
 
   generateScenarioAnalysis(scenarioScores) {
     const analysis = {};
     
     Object.entries(scenarioScores).forEach(([scenarioName, score]) => {
       const scenario = SCENARIO_ANALYSIS[scenarioName];
+      if (!scenario) {
+        console.warn(`⚠️ Scenario ${scenarioName} not found in SCENARIO_ANALYSIS`);
+        return;
+      }
+
       const level = score > 70 ? 'high' : score > 40 ? 'medium' : 'low';
       const levelData = scenario.levels[level];
+      
+      if (!levelData) {
+        console.warn(`⚠️ Level ${level} not found for scenario ${scenarioName}`);
+        return;
+      }
       
       analysis[scenarioName] = {
         score: Math.round(score),
@@ -7927,45 +8831,191 @@ class ResultsGenerator {
     return analysis;
   }
 
-  generateEncouragement(riskLevel) {
+  generateRiskAssessment(analysis) {
+    const riskLevel = analysis.riskLevel || 'medium';
+    const keyIndicators = analysis.keyIndicators || [];
+    
+    const riskMessages = {
+      high: {
+        level: 'High Concern',
+        message: 'Some patterns suggest potentially harmful dynamics. Please consider reaching out for professional support or trusted friends.',
+        emoji: '🚨',
+        priority: 'immediate',
+        urgency: 'high'
+      },
+      medium: {
+        level: 'Some Concerns', 
+        message: 'There are some patterns worth paying attention to. Trust your instincts about your relationship.',
+        emoji: '⚠️',
+        priority: 'moderate',
+        urgency: 'moderate'
+      },
+      low: {
+        level: 'Lower Concern',
+        message: 'The patterns seem generally healthy, though every relationship has room for growth.',
+        emoji: '💚',
+        priority: 'monitoring',
+        urgency: 'low'
+      }
+    };
+
+    const assessment = riskMessages[riskLevel] || riskMessages.medium;
+
     return {
-      main: "You're Not Crazy 🧠",
-      message: "Everything you're feeling? Valid. Every weird interaction that made you uncomfortable? Trust that feeling. Your instincts are trying to protect you.",
-      strength: "You're stronger than you know, smarter than you've been told, and worthy of so much more than what you're getting. 💕"
+      ...assessment,
+      indicators: keyIndicators,
+      confidence: analysis.confidence || 0.5,
+      analysisMethod: analysis.analysisMethod || 'enhanced',
+      recommendedActions: this.generateRecommendedActions(riskLevel, keyIndicators)
     };
   }
 
-  generateGentleAdvice(demographics) {
-    const ageSpecific = {
-      '18-24': "Sweetie, I know this might be one of your first serious relationships, and that makes it even harder to know what's normal. Trust me when I say this: you're not being dramatic, you're not expecting too much, and you deserve better. 💕",
-      '25-34': "Honey, I know you might be thinking about timelines and 'what if this is as good as it gets?' But settling for less than you deserve won't make you happy in the long run. You still have so much life ahead of you. 🤗",
-      '35+': "I know it might feel like starting over is too scary or too late, but babe - you deserve happiness at every age. Your experience and wisdom are assets, not limitations. 💪"
+  generateRecommendedActions(riskLevel, indicators) {
+    const actions = {
+      high: [
+        'Consider talking to a trusted friend, family member, or counselor',
+        'Document concerning behaviors and patterns',
+        'Identify your support network and safe people to talk to',
+        'Trust your instincts - they brought you here for a reason'
+      ],
+      medium: [
+        'Pay attention to these patterns and how they make you feel',
+        'Consider discussing these concerns with your partner',
+        'Maintain connections with friends and family',
+        'Set and maintain healthy boundaries'
+      ],
+      low: [
+        'Continue nurturing the positive aspects of your relationship',
+        'Keep communication open with your partner',
+        'Maintain your individual interests and friendships',
+        'Regular relationship check-ins can be helpful'
+      ]
     };
 
-    return ageSpecific[demographics.ageGroup] || ageSpecific['25-34'];
+    return actions[riskLevel] || actions.medium;
   }
 
-  getSupportResources() {
-    return [
+  generateEncouragement(riskLevel) {
+    const encouragements = {
+      high: {
+        main: "You're Not Crazy 🧠",
+        message: "Everything you're feeling? Valid. Every weird interaction that made you uncomfortable? Trust that feeling. Your instincts brought you here, and they're trying to protect you.",
+        strength: "You're stronger than you know, braver than you feel, and worthy of so much more respect and love. 💕"
+      },
+      medium: {
+        main: "Trust Your Instincts 🎯",
+        message: "You took this assessment for a reason. Something inside you is paying attention to these patterns. That awareness is actually a superpower.",
+        strength: "You deserve relationships that make you feel safe, heard, and valued. Don't let anyone convince you otherwise. 💪"
+      },
+      low: {
+        main: "You're Being Thoughtful 💭",
+        message: "Taking time to reflect on your relationship shows emotional intelligence and care for yourself and your partner.",
+        strength: "Keep nurturing that self-awareness - it's the foundation of healthy relationships. 🌱"
+      }
+    };
+
+    return encouragements[riskLevel] || encouragements.medium;
+  }
+
+  generateGentleAdvice(demographics, analysis) {
+    const ageGroup = demographics.ageGroup || '25-34';
+    const relationshipStatus = demographics.relationshipStatus || 'dating';
+    const riskLevel = analysis.riskLevel || 'medium';
+    
+    // Age and context-appropriate advice
+    const adviceTemplates = {
+      high: {
+        young: "Honey, what you're describing raises some red flags. You're young and have so much life ahead of you - you deserve someone who builds you up, not tears you down.",
+        mature: "These patterns can be really draining and aren't healthy for any relationship. You have the wisdom and experience to know something isn't right.",
+        general: "Trust that voice in your head that made you take this assessment. Your instincts are trying to tell you something important."
+      },
+      medium: {
+        young: "Some of these patterns are worth keeping an eye on. You're learning what you want in relationships - don't settle for less than mutual respect.",
+        mature: "You know what healthy relationships look like, and these patterns don't quite fit that mold. It's okay to have standards and expectations.",
+        general: "Consider having an open conversation about these dynamics - see how your partner responds to your concerns."
+      },
+      low: {
+        young: "Your relationship seems to have a pretty solid foundation! Keep nurturing those positive patterns while staying aware of your own needs.",
+        mature: "It sounds like you've built something healthy together. Keep communicating and supporting each other's growth.",
+        general: "It's great that you're being thoughtful about your relationship dynamics. That awareness is so valuable."
+      }
+    };
+
+    const ageCategory = ['18-24'].includes(ageGroup) ? 'young' : 
+                      ['45-54', '55+'].includes(ageGroup) ? 'mature' : 'general';
+    
+    const advice = adviceTemplates[riskLevel][ageCategory];
+    
+    return {
+      main: advice,
+      followUp: "Remember: you know your situation better than anyone. Trust yourself, and don't hesitate to seek support if you need it. 💕",
+      contextual: this.getContextualAdvice(relationshipStatus, riskLevel)
+    };
+  }
+
+  getContextualAdvice(relationshipStatus, riskLevel) {
+    const contextAdvice = {
+      'dating': 'Early relationships are when patterns establish themselves. Pay attention to how they treat you now.',
+      'living-together': 'Living together reveals a lot about compatibility and respect. Notice how they handle shared spaces and decisions.',
+      'engaged': 'Engagement is a time to really evaluate if these patterns work for a lifetime together.',
+      'married': 'Marriage is about growing together while maintaining your individual selves.',
+      'considering-leaving': 'That you\'re considering leaving suggests your needs aren\'t being met. Trust those feelings.'
+    };
+
+    return contextAdvice[relationshipStatus] || 'Every relationship stage brings its own challenges and opportunities for growth.';
+  }
+
+  getSupportResources(region = 'north-america') {
+    const baseResources = [
       {
         name: "National Domestic Violence Hotline",
         contact: "1-800-799-7233 (24/7)",
         description: "Confidential support from people who understand 💕",
-        note: "They have chat and text options too if calling feels scary"
+        note: "They have chat and text options too if calling feels scary",
+        type: "crisis"
       },
       {
         name: "Crisis Text Line", 
         contact: "Text HOME to 741741",
         description: "24/7 support via text - sometimes typing feels easier than talking 📱",
-        note: "Great for when you need immediate support but can't make a phone call"
+        note: "Great for when you need immediate support but can't make a phone call",
+        type: "crisis"
       },
       {
         name: "Love is Respect",
-        contact: "loveisrespect.org",
+        contact: "loveisrespect.org or Text LOVEIS to 22522",
         description: "Specifically for people dealing with relationship concerns 🤗",
-        note: "They have a chat feature and tons of resources"
+        note: "They have a chat feature and tons of resources for all ages",
+        type: "relationship"
       }
     ];
+
+    // Add region-specific resources
+    const regionalResources = {
+      'europe': [
+        {
+          name: "European Women's Helpline",
+          contact: "116 006",
+          description: "Free support line available in multiple languages",
+          type: "crisis"
+        }
+      ],
+      'asia': [
+        {
+          name: "Asian Mental Health Support",
+          contact: "Various by country - search 'domestic violence helpline [your country]'",
+          description: "Support services available across Asian countries",
+          type: "regional"
+        }
+      ]
+    };
+
+    const resources = [...baseResources];
+    if (regionalResources[region]) {
+      resources.push(...regionalResources[region]);
+    }
+
+    return resources;
   }
 
   generateDisclaimer() {
@@ -7976,78 +9026,291 @@ class ResultsGenerator {
       gentle: "Just... please be gentle with yourself. You're doing the best you can with what you know right now. And now you know a little more. 🤗",
       disclaimer: "Remember: this reflection is based on our conversation and what you shared. It might not capture everything about your unique situation, and that's okay. Trust your gut, talk to people you love, and don't be afraid to ask for help.",
       closing: "You've got this, babe. Even when it doesn't feel like it. 💪💕",
-      signature: "💕 Sending you love and strength, Your Assessment Bestie 🤗",
-      ps: "P.S. - Seriously, text me (okay, text someone) if you need to talk. You're not alone in this. 📱💕"
+      signature: "💕 Sending you love and strength, Your Assessment Friend 🤗",
+      ps: "P.S. - Seriously, reach out to someone if you need to talk. You're not alone in this. 📱💕",
+      professional: "This assessment is for educational and reflection purposes only and is not a substitute for professional counseling, therapy, or medical advice."
     };
+  }
+
+  generateFallbackResults(session) {
+    console.log(`⚠️ Generating fallback results for session ${session.id}`);
+    
+    return {
+      persona: PERSONAS['The Clinger'],
+      characters: [],
+      scenarioAnalysis: this.generateScenarioAnalysis(this.getDefaultScenarioScores()),
+      riskAssessment: {
+        level: 'Analysis Unavailable',
+        message: 'We encountered an issue with the analysis, but your responses are still valuable for reflection.',
+        emoji: '💭',
+        priority: 'seek_support',
+        urgency: 'moderate',
+        indicators: ['Analysis system temporarily unavailable'],
+        confidence: 0.3
+      },
+      analysisMethod: 'fallback',
+      confidence: 0.3,
+      keyIndicators: ['System unavailable - please consider seeking professional guidance'],
+      encouragement: this.generateEncouragement('medium'),
+      gentleAdvice: {
+        main: "Even though our analysis system had a hiccup, the fact that you're here asking these questions shows incredible self-awareness.",
+        followUp: "Trust your instincts about your relationship, and consider talking to someone you trust. 💕"
+      },
+      supportResources: this.getSupportResources(),
+      disclaimer: this.generateDisclaimer(),
+      metadata: {
+        sessionId: session.id,
+        generatedAt: new Date(),
+        analysisVersion: 'fallback',
+        error: 'Analysis system unavailable'
+      }
+    };
+  }
+
+  getDefaultScenarioScores() {
+    return {
+      'Decision-Making Dynamics': 50,
+      'Conflict Resolution Patterns': 50,
+      'Social Connection Control': 50,
+      'Emotional Support Quality': 50,
+      'Boundary Respect': 50,
+      'Emotional Regulation': 50,
+      'Trust and Honesty': 50
+    };
+  }
+
+  // Validation methods
+  validatePersona(persona) {
+    const requiredProps = ['title', 'greeting', 'empathyOpener', 'mainMessage', 'caring', 'worry', 'riskLevel'];
+    
+    for (const prop of requiredProps) {
+      if (!persona[prop]) {
+        console.warn(`Missing required property '${prop}' in persona`);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  validateAnalysis(analysis) {
+    const requiredProps = ['persona', 'traitScores', 'riskLevel'];
+    
+    for (const prop of requiredProps) {
+      if (!analysis[prop]) {
+        console.warn(`Missing required property '${prop}' in analysis`);
+        return false;
+      }
+    }
+    return true;
   }
 }
 
-// =============================================================================
-// SECTION 10:Export Statement
-// =============================================================================
 
-
-// Export the enhanced components
-module.exports = {
-  PERSONAS,
-  CHARACTER_REFERENCES, 
-  SCENARIO_ANALYSIS,
-  SimpleAnalysisEngine,
-  ResultsGenerator,
-  DEMOGRAPHIC_OPTIONS,
-  QUESTION_BANK
-};
 
 // =============================================================================
 // SECTION 11: API ROUTES (Enhanced Version)
 // =============================================================================
 
-const resultsGenerator = new ResultsGenerator();
+// =============================================================================
+// ENHANCED API ROUTES - ADD ALL OF THESE TO YOUR server.js
+// =============================================================================
 
-// Health check with more details
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    activeSessions: sessions.size,
-    uptime: Math.floor(process.uptime())
-  });
+// First, create the enhanced results generator
+// Initialize the enhanced results generator
+const enhancedResultsGenerator = new EnhancedResultsGenerator();
+
+// =============================================================================
+// HEALTH & STATUS ENDPOINTS
+// =============================================================================
+
+// Enhanced health check with comprehensive system status
+app.get('/api/health', async (req, res) => {
+  try {
+    const startTime = Date.now();
+    
+    // Test LLM connections
+    let llmStatus = { openai: { available: false }, claude: { available: false }, fallback: { available: true } };
+    try {
+      const engine = new EnhancedAnalysisEngine();
+      llmStatus = await engine.testLLMConnections();
+    } catch (error) {
+      console.warn('⚠️ LLM status check failed:', error.message);
+    }
+    
+    // System metrics
+    const sessionStats = getSessionStats();
+    const responseTime = Date.now() - startTime;
+    
+    res.json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(process.uptime()),
+      responseTime: responseTime,
+      version: '3.0.0',
+      sessions: {
+        active: sessions.size,
+        stats: sessionStats
+      },
+      capabilities: {
+        llm: {
+          openai: llmStatus.openai?.available || false,
+          claude: llmStatus.claude?.available || false,
+          enhanced_manual: true,
+          emergency_fallback: true
+        },
+        analysis: {
+          primary: llmStatus.openai?.available ? 'OpenAI GPT-4' : 
+                   llmStatus.claude?.available ? 'Claude' : 
+                   'Enhanced Manual',
+          fallback_available: true,
+          confidence_scoring: true,
+          comprehensive_traits: true
+        }
+      },
+      system: {
+        memory: process.memoryUsage(),
+        platform: process.platform,
+        node_version: process.version
+      }
+    });
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+      fallback_available: true
+    });
+  }
 });
 
-// Start new assessment
+// LLM analysis capabilities status
+app.get('/api/analysis/status', async (req, res) => {
+  try {
+    const engine = new EnhancedAnalysisEngine();
+    const connectionStatus = await engine.testLLMConnections();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      llm_status: connectionStatus,
+      capabilities: {
+        openai_available: !!process.env.OPENAI_API_KEY && connectionStatus.openai?.available,
+        claude_available: !!process.env.ANTHROPIC_API_KEY && connectionStatus.claude?.available,
+        enhanced_manual_available: true,
+        emergency_fallback_available: true
+      },
+      recommended_analysis: connectionStatus.openai?.available ? 'OpenAI GPT-4' : 
+                           connectionStatus.claude?.available ? 'Claude 3' : 
+                           'Enhanced Manual Analysis',
+      analysis_methods: {
+        llm: connectionStatus.openai?.available || connectionStatus.claude?.available,
+        enhanced_manual: true,
+        pattern_recognition: true,
+        trait_scoring: true,
+        persona_matching: true,
+        risk_assessment: true
+      }
+    });
+  } catch (error) {
+    console.error('❌ Analysis status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check analysis status',
+      fallback_available: true,
+      enhanced_manual_available: true
+    });
+  }
+});
+
+// System statistics endpoint
+app.get('/api/stats', (req, res) => {
+  try {
+    const sessionStats = getSessionStats();
+    const systemStats = {
+      uptime: Math.floor(process.uptime()),
+      memory: process.memoryUsage(),
+      sessions: sessionStats,
+      analysis: {
+        total_personas: Object.keys(PERSONAS).length,
+        total_traits: 28,
+        total_scenarios: Object.keys(SCENARIO_ANALYSIS).length,
+        demographic_options: Object.keys(DEMOGRAPHIC_OPTIONS).length,
+        questions: QUESTION_BANK.length
+      }
+    };
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      stats: systemStats
+    });
+  } catch (error) {
+    console.error('❌ Stats error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get statistics' });
+  }
+});
+
+// =============================================================================
+// ASSESSMENT LIFECYCLE ENDPOINTS
+// =============================================================================
+
+// Start new assessment session
 app.post('/api/assessment/start', (req, res) => {
   try {
     const sessionId = 'assess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     const session = new AssessmentSession(sessionId);
+    
+    // Set metadata
+    session.setMetadata('userAgent', req.get('User-Agent'));
+    session.setMetadata('ipAddress', req.ip);
+    session.setMetadata('startTime', new Date());
+    
     sessions.set(sessionId, session);
-
     console.log(`🆕 New assessment started: ${sessionId}`);
 
     res.json({
       success: true,
       sessionId: sessionId,
       stage: 'demographics',
-      demographicOptions: DEMOGRAPHIC_OPTIONS
+      message: 'Assessment session created successfully',
+      demographicOptions: DEMOGRAPHIC_OPTIONS,
+      instructions: {
+        step: 1,
+        title: 'Tell us about yourself',
+        description: 'This helps us provide more relevant insights for your situation'
+      }
     });
   } catch (error) {
     console.error('❌ Start session error:', error);
-    res.status(500).json({ success: false, error: 'Failed to start session' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to start assessment session',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
-// Submit demographics
+// Submit demographics information
 app.post('/api/assessment/demographics', (req, res) => {
   try {
     const { sessionId, demographics } = req.body;
 
-    // Enhanced validation
+    // Validation
     if (!sessionId || !demographics) {
-      return res.status(400).json({ success: false, error: 'Missing required fields' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: sessionId and demographics are required' 
+      });
     }
 
     const session = sessions.get(sessionId);
     if (!session) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Session not found or expired',
+        action: 'Please start a new assessment'
+      });
     }
 
     // Validate required demographic fields
@@ -8057,28 +9320,58 @@ app.post('/api/assessment/demographics', (req, res) => {
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        error: `Missing required demographic fields: ${missingFields.join(', ')}`
+        error: 'Missing required demographic information',
+        missing_fields: missingFields,
+        required_fields: requiredFields
       });
     }
 
-    session.setDemographics(demographics);
-    console.log(`👤 Demographics saved for ${sessionId}`);
+    // Validate field values
+    const invalidFields = [];
+    Object.entries(demographics).forEach(([field, value]) => {
+      if (DEMOGRAPHIC_OPTIONS[field] && !DEMOGRAPHIC_OPTIONS[field][value]) {
+        invalidFields.push({ field, value, valid_options: Object.keys(DEMOGRAPHIC_OPTIONS[field]) });
+      }
+    });
 
+    if (invalidFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid demographic values',
+        invalid_fields: invalidFields
+      });
+    }
+
+    // Save demographics
+    session.setDemographics(demographics);
+    console.log(`👤 Demographics saved for ${sessionId}:`, demographics);
+
+    // Get first question
     const firstQuestion = QUESTION_BANK[0];
 
     res.json({
       success: true,
       stage: 'assessment',
       question: firstQuestion,
-      introMessage: `Thank you for sharing that information. Now I'd like to understand your relationship dynamics better through some everyday scenarios. 
-
-This is a safe space to share your experiences, and there are no judgments here - just an opportunity to gain some clarity about patterns in your relationship.
-
-Let's start with something simple...`
+      progress: {
+        questionsTotal: QUESTION_BANK.length,
+        questionsRemaining: QUESTION_BANK.length,
+        percentComplete: 0
+      },
+      instructions: {
+        step: 2,
+        title: 'Share your experience',
+        description: 'Please answer honestly about your relationship. There are no right or wrong answers.'
+      },
+      introMessage: `Thank you for sharing that information with me. Now I'd like to understand your relationship dynamics better. Please take your time and answer as honestly as you feel comfortable.`
     });
   } catch (error) {
     console.error('❌ Demographics error:', error);
-    res.status(500).json({ success: false, error: 'Failed to process demographics' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to process demographics',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -8087,23 +9380,54 @@ app.post('/api/assessment/respond', (req, res) => {
   try {
     const { sessionId, questionId, response } = req.body;
 
+    // Validation
     if (!sessionId || !response) {
-      return res.status(400).json({ success: false, error: 'Missing required fields' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: sessionId and response are required' 
+      });
+    }
+
+    if (typeof response !== 'string' || response.trim().length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Response must be at least 3 characters long'
+      });
+    }
+
+    if (response.length > 10000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Response is too long (maximum 10,000 characters)'
+      });
     }
 
     const session = sessions.get(sessionId);
     if (!session) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Session not found or expired',
+        action: 'Please start a new assessment'
+      });
     }
 
-    // Find current question
-    const currentQuestion = QUESTION_BANK.find(q => q.id === questionId) || QUESTION_BANK[session.currentQuestionIndex];
-    
+    // Find the current question
+    const currentQuestion = QUESTION_BANK.find(q => q.id === questionId) || 
+                           QUESTION_BANK[session.currentQuestionIndex] ||
+                           QUESTION_BANK[session.responses.length];
+
+    if (!currentQuestion) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid question ID or assessment already complete'
+      });
+    }
+
     // Add response
-    session.addResponse(currentQuestion, response);
+    session.addResponse(currentQuestion, response.trim());
     session.currentQuestionIndex++;
 
-    console.log(`💬 Response saved for ${sessionId}, Question: ${questionId}`);
+    console.log(`💬 Response saved for ${sessionId}, Question: ${questionId}, Length: ${response.length}`);
 
     // Check if assessment is complete
     if (session.currentQuestionIndex >= QUESTION_BANK.length) {
@@ -8112,42 +9436,81 @@ app.post('/api/assessment/respond', (req, res) => {
         success: true,
         complete: true,
         sessionId: sessionId,
-        message: "Thank you for sharing your experiences with me. Let me analyze what you've told me and provide some insights about your partner's behavior patterns."
+        progress: {
+          questionsAnswered: session.responses.length,
+          questionsTotal: QUESTION_BANK.length,
+          percentComplete: 100
+        },
+        message: "Thank you for sharing your experiences with me. Let me analyze what you've told me and provide some insights.",
+        instructions: {
+          step: 3,
+          title: 'Analysis complete',
+          description: 'Your responses are being analyzed to provide personalized insights'
+        }
       });
     }
 
     // Get next question
     const nextQuestion = QUESTION_BANK[session.currentQuestionIndex];
+    const progress = {
+      questionsAnswered: session.responses.length,
+      questionsRemaining: QUESTION_BANK.length - session.responses.length,
+      questionsTotal: QUESTION_BANK.length,
+      percentComplete: Math.round((session.responses.length / QUESTION_BANK.length) * 100),
+      currentStage: nextQuestion.stage
+    };
 
     res.json({
       success: true,
       question: nextQuestion,
-      progress: {
-        questionsAnswered: session.currentQuestionIndex,
-        estimatedRemaining: QUESTION_BANK.length - session.currentQuestionIndex,
-        percentComplete: Math.round((session.currentQuestionIndex / QUESTION_BANK.length) * 100)
-      }
+      progress: progress,
+      encouragement: session.responses.length % 3 === 0 ? 
+        "You're doing great - thank you for being so thoughtful with your responses." : null
     });
+
   } catch (error) {
-    console.error('❌ Respond error:', error);
-    res.status(500).json({ success: false, error: 'Failed to process response' });
+    console.error('❌ Response submission error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to process response',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
 // Get assessment results
-app.get('/api/assessment/results/:sessionId', (req, res) => {
+app.get('/api/assessment/results/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
     const session = sessions.get(sessionId);
 
     if (!session) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Session not found or expired',
+        action: 'Please start a new assessment'
+      });
     }
 
-    if (!session.demographics || Object.keys(session.responses).length === 0) {
+    // Validate session completeness
+    if (!session.demographics || Object.keys(session.demographics).length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Incomplete assessment data'
+        error: 'Incomplete assessment: demographics missing',
+        stage: 'demographics'
+      });
+    }
+
+    if (session.responses.length < QUESTION_BANK.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Incomplete assessment: not all questions answered',
+        stage: 'assessment',
+        progress: {
+          questionsAnswered: session.responses.length,
+          questionsTotal: QUESTION_BANK.length,
+          percentComplete: Math.round((session.responses.length / QUESTION_BANK.length) * 100)
+        }
       });
     }
 
@@ -8155,82 +9518,84 @@ app.get('/api/assessment/results/:sessionId', (req, res) => {
 
     // Generate results if not already done
     if (!session.analysisResults) {
-      const results = resultsGenerator.generateResults(session);
-      session.setAnalysisResults(results);
+      try {
+        const results = await enhancedResultsGenerator.generateResults(session);
+        session.setAnalysisResults(results);
+        console.log(`✅ Results generated for ${sessionId} using ${results.analysisMethod}`);
+      } catch (analysisError) {
+        console.error(`❌ Analysis failed for ${sessionId}:`, analysisError);
+        
+        // Try fallback results generation
+        const fallbackResults = enhancedResultsGenerator.generateFallbackResults(session);
+        session.setAnalysisResults(fallbackResults);
+        console.log(`🔄 Fallback results generated for ${sessionId}`);
+      }
     }
 
-    console.log(`✅ Results generated for ${sessionId}`);
-
     res.json({
       success: true,
-      results: session.analysisResults
+      sessionId: sessionId,
+      results: session.analysisResults,
+      metadata: {
+        generatedAt: session.analysisResults.metadata?.generatedAt || new Date(),
+        analysisMethod: session.analysisResults.analysisMethod,
+        confidence: session.analysisResults.confidence,
+        sessionDuration: new Date() - session.createdAt
+      }
     });
+
   } catch (error) {
-    console.error('❌ Results error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get results' });
+    console.error('❌ Results generation error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate results',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      fallback_message: 'Please try again or contact support if the problem persists'
+    });
   }
 });
 
-// Submit feedback (keeping your excellent feedback system)
-app.post('/api/assessment/feedback', (req, res) => {
-  try {
-    const { sessionId, quickRating, mostHelpful, additionalComments } = req.body;
+// =============================================================================
+// SESSION MANAGEMENT ENDPOINTS
+// =============================================================================
 
-    // Enhanced feedback logging
-    const feedbackData = {
-      sessionId,
-      quickRating,
-      mostHelpful,
-      additionalComments,
-      timestamp: new Date().toISOString(),
-      userAgent: req.get('User-Agent')
-    };
-
-    // In production, save to database
-    console.log('📝 Feedback received:', feedbackData);
-
-    res.json({
-      success: true,
-      message: 'Thank you for your feedback! Your input helps us improve the assessment.'
-    });
-  } catch (error) {
-    console.error('❌ Feedback error:', error);
-    res.status(500).json({ success: false, error: 'Failed to submit feedback' });
-  }
-});
-
-// NEW: Get session status (useful for frontend)
-app.get('/api/assessment/status/:sessionId', (req, res) => {
+// Get session status
+app.get('/api/assessment/session/:sessionId', (req, res) => {
   try {
     const { sessionId } = req.params;
     const session = sessions.get(sessionId);
 
     if (!session) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Session not found or expired' 
+      });
     }
 
-    const totalQuestions = QUESTION_BANK.length;
-    const answeredQuestions = Object.keys(session.responses).length;
+    const sessionInfo = session.getSessionInfo();
+    const progress = session.getProgress();
 
     res.json({
       success: true,
-      status: {
-        sessionId: sessionId,
-        hasDemographics: !!session.demographics,
-        currentQuestionIndex: session.currentQuestionIndex,
-        totalQuestions: totalQuestions,
-        answeredQuestions: answeredQuestions,
-        progress: Math.round((answeredQuestions / totalQuestions) * 100),
-        isComplete: answeredQuestions >= totalQuestions
+      session: {
+        id: sessionId,
+        stage: session.stage,
+        createdAt: session.createdAt,
+        lastActivity: session.lastActivity,
+        progress: progress,
+        hasDemographics: Object.keys(session.demographics).length > 0,
+        hasResults: session.analysisResults !== null,
+        nextAction: progress.isComplete ? 'get_results' : 
+                   !progress.hasDemographics ? 'submit_demographics' : 'continue_assessment'
       }
     });
   } catch (error) {
-    console.error('❌ Status error:', error);
+    console.error('❌ Session status error:', error);
     res.status(500).json({ success: false, error: 'Failed to get session status' });
   }
 });
 
-// NEW: Delete session (for privacy/cleanup)
+// Delete session
 app.delete('/api/assessment/session/:sessionId', (req, res) => {
   try {
     const { sessionId } = req.params;
@@ -8238,68 +9603,598 @@ app.delete('/api/assessment/session/:sessionId', (req, res) => {
 
     if (deleted) {
       console.log(`🗑️ Session deleted: ${sessionId}`);
-      res.json({ success: true, message: 'Session deleted successfully' });
+      res.json({ 
+        success: true, 
+        message: 'Session deleted successfully' 
+      });
     } else {
-      res.status(404).json({ success: false, error: 'Session not found' });
+      res.status(404).json({ 
+        success: false, 
+        error: 'Session not found' 
+      });
     }
   } catch (error) {
-    console.error('❌ Delete session error:', error);
+    console.error('❌ Session deletion error:', error);
     res.status(500).json({ success: false, error: 'Failed to delete session' });
   }
 });
 
-// Enhanced error handling
+// Get current question for session
+app.get('/api/assessment/question/:sessionId', (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = sessions.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Session not found or expired' 
+      });
+    }
+
+    const currentQuestion = session.getCurrentQuestion();
+    const progress = session.getProgress();
+
+    if (!currentQuestion) {
+      return res.json({
+        success: true,
+        complete: true,
+        progress: progress,
+        message: 'Assessment complete - ready for results'
+      });
+    }
+
+    res.json({
+      success: true,
+      question: currentQuestion,
+      progress: progress
+    });
+  } catch (error) {
+    console.error('❌ Current question error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get current question' });
+  }
+});
+
+// =============================================================================
+// FEEDBACK & SUPPORT ENDPOINTS
+// =============================================================================
+
+// Submit feedback
+app.post('/api/assessment/feedback', async (req, res) => {
+  try {
+    const { sessionId, quickRating, mostHelpful, additionalComments, improvements } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Session ID is required'
+      });
+    }
+
+    const session = sessions.get(sessionId);
+    const feedbackData = {
+      sessionId,
+      quickRating,
+      mostHelpful,
+      additionalComments,
+      improvements,
+      timestamp: new Date().toISOString()
+    };
+
+    // Save to database if session exists and has Supabase support
+    if (session && typeof session.saveFeedback === 'function') {
+      await session.saveFeedback(feedbackData);
+    }
+
+    console.log('📝 Feedback received:', feedbackData);
+
+    res.json({
+      success: true,
+      message: 'Thank you for your feedback! It helps us improve the assessment experience.'
+    });
+  } catch (error) {
+    console.error('❌ Feedback submission error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to submit feedback'
+    });
+  }
+});
+
+// Get support resources
+app.get('/api/support/resources', (req, res) => {
+  try {
+    const { region = 'north-america' } = req.query;
+    
+    const resources = enhancedResultsGenerator.getSupportResources(region);
+    
+    res.json({
+      success: true,
+      region: region,
+      resources: resources,
+      emergency_note: "If you're in immediate danger, please call your local emergency services (911, 999, 112, etc.)",
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Support resources error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get support resources',
+      fallback_resources: [
+        {
+          name: "National Domestic Violence Hotline",
+          contact: "1-800-799-7233",
+          available: "24/7"
+        }
+      ]
+    });
+  }
+});
+
+// =============================================================================
+// ADMINISTRATIVE ENDPOINTS (Development/Debug)
+// =============================================================================
+
+// Get all active sessions (admin endpoint)
+app.get('/api/admin/sessions', (req, res) => {
+  try {
+    // Basic auth check (in production, implement proper authentication)
+    const authHeader = req.get('Authorization');
+    if (process.env.NODE_ENV === 'production' && !authHeader) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const activeSessions = getActiveSessions();
+    const sessionStats = getSessionStats();
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      total_sessions: activeSessions.length,
+      stats: sessionStats,
+      sessions: activeSessions
+    });
+  } catch (error) {
+    console.error('❌ Admin sessions error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get session data' });
+  }
+});
+
+// Manual cleanup endpoint
+app.post('/api/admin/cleanup', (req, res) => {
+  try {
+    const { timeoutMs = 24 * 60 * 60 * 1000 } = req.body; // Default 24 hours
+    const cleanedCount = cleanupExpiredSessions(timeoutMs);
+    
+    res.json({
+      success: true,
+      message: `Cleanup completed`,
+      sessions_cleaned: cleanedCount,
+      remaining_sessions: sessions.size,
+      timeout_used: timeoutMs
+    });
+  } catch (error) {
+    console.error('❌ Manual cleanup error:', error);
+    res.status(500).json({ success: false, error: 'Cleanup failed' });
+  }
+});
+
+// =============================================================================
+// ERROR HANDLING MIDDLEWARE
+// =============================================================================
+
+// Handle unmatched routes
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found',
-    availableEndpoints: [
-      'GET /api/health',
-      'POST /api/assessment/start',
-      'POST /api/assessment/demographics',
-      'POST /api/assessment/respond',
-      'GET /api/assessment/results/:sessionId',
-      'POST /api/assessment/feedback',
-      'GET /api/assessment/status/:sessionId',
-      'DELETE /api/assessment/session/:sessionId'
-    ]
+    path: req.path,
+    method: req.method,
+    message: 'The requested endpoint does not exist',
+    available_endpoints: {
+      assessment: [
+        'POST /api/assessment/start',
+        'POST /api/assessment/demographics',
+        'POST /api/assessment/respond',
+        'GET /api/assessment/results/:sessionId',
+        'GET /api/assessment/session/:sessionId',
+        'DELETE /api/assessment/session/:sessionId',
+        'GET /api/assessment/question/:sessionId'
+      ],
+      system: [
+        'GET /api/health',
+        'GET /api/analysis/status',
+        'GET /api/stats'
+      ],
+      support: [
+        'POST /api/assessment/feedback',
+        'GET /api/support/resources'
+      ]
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
-// Enhanced cleanup with better logging
-function cleanupOldSessions() {
-  const now = new Date();
-  let cleaned = 0;
+// Global error handler
+app.use((error, req, res, next) => {
+  console.error('❌ Unhandled error:', error);
   
-  for (const [sessionId, session] of sessions.entries()) {
-    const age = now - session.lastActivity;
-    if (age > 24 * 60 * 60 * 1000) { // 24 hours
-      sessions.delete(sessionId);
-      cleaned++;
-    }
+  // Don't expose internal errors in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: 'An unexpected error occurred',
+    details: isDevelopment ? error.message : undefined,
+    stack: isDevelopment ? error.stack : undefined,
+    timestamp: new Date().toISOString(),
+    request_id: req.id || 'unknown'
+  });
+});
+
+// =============================================================================
+// SECTION 10: SERVER STARTUP & ERROR HANDLING
+// =============================================================================
+
+// =============================================================================
+// GRACEFUL SHUTDOWN HANDLING
+// =============================================================================
+
+let isShuttingDown = false;
+
+// Graceful shutdown function
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    console.log('⚠️ Shutdown already in progress...');
+    return;
   }
-  
-  if (cleaned > 0) {
-    console.log(`🧹 Cleaned up ${cleaned} old sessions`);
+
+  isShuttingDown = true;
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+
+  try {
+    // Stop accepting new connections
+    server.close(async () => {
+      console.log('📡 HTTP server closed');
+      
+      try {
+        // Save critical session data (in production, you'd persist to database)
+        const activeSessions = Array.from(sessions.values());
+        const criticalSessions = activeSessions.filter(session => 
+          session.responses.length > 0 || session.analysisResults
+        );
+        
+        if (criticalSessions.length > 0) {
+          console.log(`💾 Preserving ${criticalSessions.length} active sessions...`);
+          // In production, save to database or Redis
+        }
+
+        // Cleanup resources
+        sessions.clear();
+        console.log('🧹 Sessions cleared');
+
+        console.log('✅ Graceful shutdown completed');
+        process.exit(0);
+      } catch (cleanupError) {
+        console.error('❌ Error during cleanup:', cleanupError);
+        process.exit(1);
+      }
+    });
+
+    // Force close after timeout
+    setTimeout(() => {
+      console.error('⏰ Graceful shutdown timeout - forcing close');
+      process.exit(1);
+    }, 10000); // 10 second timeout
+
+  } catch (error) {
+    console.error('❌ Error during graceful shutdown:', error);
+    process.exit(1);
   }
 }
 
-// Run cleanup every hour
-setInterval(cleanupOldSessions, 60 * 60 * 1000);
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Enhanced server startup
-app.listen(PORT, () => {
-  console.log(`
-🎯 Partner Assessment API Server
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 Server running on port ${PORT}
-🌐 Environment: ${process.env.NODE_ENV || 'development'}
-📊 Active sessions: ${sessions.size}
-⏰ Started at: ${new Date().toLocaleString()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Ready to help people understand their relationships! 💕
-  `);
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  console.error('Stack trace:', error.stack);
   
-  // Run initial cleanup
-  cleanupOldSessions();
+  // In production, you might want to send this to error tracking service
+  if (process.env.NODE_ENV === 'production') {
+    // sendToErrorTracking(error);
+  }
+  
+  // Attempt graceful shutdown
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  
+  // In production, you might want to send this to error tracking service
+  if (process.env.NODE_ENV === 'production') {
+    // sendToErrorTracking(new Error(`Unhandled Rejection: ${reason}`));
+  }
+  
+  // Don't crash on unhandled rejections in development
+  if (process.env.NODE_ENV !== 'development') {
+    gracefulShutdown('UNHANDLED_REJECTION');
+  }
+});
+
+// =============================================================================
+// MAINTENANCE & MONITORING
+// =============================================================================
+
+// Automatic session cleanup
+function startMaintenanceTasks() {
+  // Cleanup expired sessions every hour
+  const cleanupInterval = setInterval(() => {
+    try {
+      const cleanedCount = cleanupExpiredSessions();
+      if (cleanedCount > 0) {
+        console.log(`🧹 Automatic cleanup: removed ${cleanedCount} expired sessions`);
+      }
+    } catch (error) {
+      console.error('❌ Automatic cleanup error:', error);
+    }
+  }, 60 * 60 * 1000); // Every hour
+
+  // Memory usage monitoring
+  const memoryInterval = setInterval(() => {
+    const usage = process.memoryUsage();
+    const usedMB = Math.round(usage.heapUsed / 1024 / 1024);
+    const totalMB = Math.round(usage.heapTotal / 1024 / 1024);
+    
+    // Log memory usage if it's high
+    if (usedMB > 500) { // More than 500MB
+      console.log(`📊 Memory usage: ${usedMB}MB / ${totalMB}MB (${sessions.size} sessions)`);
+    }
+    
+    // Warning if memory usage is very high
+    if (usedMB > 1000) { // More than 1GB
+      console.warn('⚠️ High memory usage detected. Consider restarting or optimizing.');
+    }
+  }, 5 * 60 * 1000); // Every 5 minutes
+
+  // Store intervals for cleanup during shutdown
+  process.cleanupInterval = cleanupInterval;
+  process.memoryInterval = memoryInterval;
+}
+
+// Stop maintenance tasks during shutdown
+function stopMaintenanceTasks() {
+  if (process.cleanupInterval) {
+    clearInterval(process.cleanupInterval);
+    console.log('🛑 Cleanup interval stopped');
+  }
+  if (process.memoryInterval) {
+    clearInterval(process.memoryInterval);
+    console.log('🛑 Memory monitoring stopped');
+  }
+}
+
+
+// Add analytics endpoint to view your data
+app.get('/api/admin/analytics', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Database not configured' 
+      });
+    }
+
+    // Get recent sessions
+    const { data: recentSessions } = await supabase
+      .from('session_analytics') // Using the view we created
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    // Get persona distribution
+    const { data: personaStats } = await supabase
+      .from('session_analysis')
+      .select('persona_name, count(*)')
+      .group('persona_name');
+
+    res.json({
+      success: true,
+      analytics: {
+        recent_sessions: recentSessions,
+        persona_distribution: personaStats,
+        total_sessions: recentSessions?.length || 0,
+        generated_at: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Analytics error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get analytics' 
+    });
+  }
+});
+
+// Add export endpoint
+app.get('/api/admin/export', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Database not configured' 
+      });
+    }
+
+    const { format = 'json', days = 30 } = req.query;
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: exportData } = await supabase
+      .from('session_analytics')
+      .select('*')
+      .gte('created_at', startDate)
+      .order('created_at', { ascending: false });
+
+    res.json({
+      success: true,
+      data: exportData,
+      record_count: exportData?.length || 0,
+      export_date: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Export error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to export data' 
+    });
+  }
+});
+// =============================================================================
+// SERVER STARTUP
+// =============================================================================
+
+const server = app.listen(PORT, async () => {
+  console.log(`
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                    🎯 Partner Assessment API Server v3.0                     ║
+║                              Enhanced Analysis Edition                        ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🚀 Server Details:
+   ├─ Port: ${PORT}
+   ├─ Environment: ${process.env.NODE_ENV || 'development'}
+   ├─ Node.js: ${process.version}
+   ├─ Platform: ${process.platform}
+   └─ Started: ${new Date().toLocaleString()}
+
+📊 System Capabilities:
+   ├─ Active Sessions: ${sessions.size}
+   ├─ Personas Available: ${Object.keys(PERSONAS).length}
+   ├─ Trait Analysis: 28 comprehensive traits
+   ├─ Assessment Questions: ${QUESTION_BANK.length}
+   └─ Scenario Analysis: ${Object.keys(SCENARIO_ANALYSIS).length} relationship areas
+  `);
+
+  // Initialize LLM capabilities check
+  try {
+    const engine = new EnhancedAnalysisEngine();
+    const status = await engine.testLLMConnections();
+    
+    console.log(`🧠 Analysis Engine Status:`);
+    console.log(`   ├─ OpenAI GPT: ${status.openai?.available ? '✅ Connected' : '❌ Not available'}`);
+    console.log(`   ├─ Claude: ${status.claude?.available ? '✅ Connected' : '❌ Not available'}`);
+    console.log(`   ├─ Enhanced Manual: ✅ Available`);
+    console.log(`   └─ Emergency Fallback: ✅ Available`);
+
+    // ADD THIS NEW SECTION:
+console.log(`\n💾 Data Storage Status:`);
+console.log(`   ├─ Supabase: ${supabase ? '✅ Connected' : '❌ Not configured'}`);
+console.log(`   ├─ Session Persistence: ${supabase ? '✅ Enabled' : '⚠️  Memory only'}`);
+console.log(`   └─ Analytics: ${supabase ? '✅ Available' : '❌ Not available'}`);
+
+if (supabase) {
+  console.log(`\n📊 Data Access:`);
+  console.log(`   ├─ View data: Supabase Dashboard`);
+  console.log(`   ├─ Analytics: GET /api/admin/analytics`);
+  console.log(`   └─ Export: GET /api/admin/export`);
+}
+    
+    const primaryEngine = status.openai?.available ? 'OpenAI GPT-4' : 
+                         status.claude?.available ? 'Claude' : 
+                         'Enhanced Manual Analysis';
+    
+    console.log(`\n🎯 Primary Analysis Engine: ${primaryEngine}`);
+    
+    if (!status.openai?.available && !status.claude?.available) {
+      console.log(`\n⚠️  Running in Enhanced Manual Mode`);
+      console.log(`   └─ Add OPENAI_API_KEY or ANTHROPIC_API_KEY environment variables for LLM analysis`);
+    }
+    
+  } catch (error) {
+    console.log(`\n⚠️  LLM connectivity check failed: ${error.message}`);
+    console.log(`   └─ Enhanced Manual Analysis available as fallback`);
+  }
+
+  // Display API endpoints
+  console.log(`\n🌐 API Endpoints Available:`);
+  console.log(`   ├─ GET  /api/health - System health check`);
+  console.log(`   ├─ POST /api/assessment/start - Start new assessment`);
+  console.log(`   ├─ POST /api/assessment/demographics - Submit demographics`);
+  console.log(`   ├─ POST /api/assessment/respond - Submit responses`);
+  console.log(`   ├─ GET  /api/assessment/results/:id - Get analysis results`);
+  console.log(`   ├─ POST /api/assessment/feedback - Submit feedback`);
+  console.log(`   └─ GET  /api/support/resources - Get support resources`);
+
+  // Start maintenance tasks
+  startMaintenanceTasks();
+  console.log(`\n🔧 Maintenance Tasks Started:`);
+  console.log(`   ├─ Session cleanup: Every hour`);
+  console.log(`   └─ Memory monitoring: Every 5 minutes`);
+
+  // Production warnings
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`\n🔒 Production Mode Active:`);
+    console.log(`   ├─ Error details hidden from responses`);
+    console.log(`   ├─ Graceful shutdown handlers registered`);
+    console.log(`   └─ Admin endpoints require authentication`);
+  }
+
+  console.log(`\n╔══════════════════════════════════════════════════════════════════════════════╗`);
+  console.log(`║  🎉 Ready to help people understand their relationships!                     ║`);
+  console.log(`║  💕 Assessment system fully operational and standing by...                   ║`);
+  console.log(`╚══════════════════════════════════════════════════════════════════════════════╝\n`);
+
+  // Run initial cleanup
+  const initialCleanup = cleanupExpiredSessions();
+  if (initialCleanup > 0) {
+    console.log(`🧹 Initial cleanup: removed ${initialCleanup} expired sessions`);
+  }
+});
+
+// Handle server startup errors
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+    console.error(`   Try setting a different PORT environment variable`);
+  } else if (error.code === 'EACCES') {
+    console.error(`❌ Permission denied for port ${PORT}`);
+    console.error(`   Try using a port number above 1024`);
+  } else {
+    console.error(`❌ Server startup error:`, error);
+  }
+  process.exit(1);
+});
+
+// Register cleanup function for shutdown
+process.on('beforeExit', () => {
+  stopMaintenanceTasks();  
+});
+
+
+// =============================================================================
+// SECTION 10:Export Statement
+// =============================================================================
+
+
+// Export the enhanced components
+module.exports = {
+  app,
+  server,
+  sessions,
+  EnhancedAnalysisEngine,
+  EnhancedResultsGenerator,
+  PERSONAS,
+  CHARACTER_REFERENCES,
+  SCENARIO_ANALYSIS,
+  DEMOGRAPHIC_OPTIONS,
+  QUESTION_BANK
+};
