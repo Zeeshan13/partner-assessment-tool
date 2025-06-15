@@ -15,31 +15,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const { createClient } = require('@supabase/supabase-js');
 
-// Initialize Supabase client
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY ? 
-  createClient(
-    process.env.SUPABASE_URL, 
-    process.env.SUPABASE_ANON_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  ) : null;
-
-if (supabase) {
-  console.log('📊 Supabase client initialized successfully');
-  console.log('📍 Supabase URL:', process.env.SUPABASE_URL);
-} else {
-  console.log('⚠️ Supabase not configured - using memory storage only');
-  console.log('Missing:', 
-    !process.env.SUPABASE_URL ? 'SUPABASE_URL' : '',
-    !process.env.SUPABASE_ANON_KEY ? 'SUPABASE_ANON_KEY' : ''
-  );
-}
 
 // Fix for Railway reverse proxy
 app.set('trust proxy', 1);
