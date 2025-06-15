@@ -1,31 +1,30 @@
 // =============================================================================
 // SECTION 1:Dependencies & Setup
 // =============================================================================
-// Add this to the top of your server.js file
-const { createClient } = require('@supabase/supabase-js');
+
 
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const fs = require('fs').promises;
+const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
-
-// Add this to the top of your server.js file
-const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-let supabase = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
-  supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
-  console.log('✅ Supabase initialized for session storage');
-} else {
-  console.log('⚠️ Supabase not configured - sessions will only be stored in memory');
-}
+// =============================================================================
+// SECTION 1.2: Session Storage Implementation
+// =============================================================================
+
+
+
+// =============================================================================
+// SECTION 1.3: Original Code (Imports and Setup)
+// =============================================================================
+
 // Middleware
 app.use(helmet());
 app.use(cors({
@@ -7701,7 +7700,6 @@ class AssessmentSession {
     this.stage = 'created';
     this.metadata = {
       userAgent: null,
-      ipAddress: null,
       startTime: new Date(),
       completionTime: null,
       totalDuration: null
@@ -7710,7 +7708,8 @@ class AssessmentSession {
 
   // Keep existing methods
   setDemographics(demographics) {
-    this.demographics = demographics;
+    this.demographics = { ...demographics, setAt: new Date() };
+    this.stage = 'demographics_complete';
     this.lastActivity = new Date();
   }
 
@@ -7720,6 +7719,7 @@ class AssessmentSession {
       questionText: question.text,
       response: response,
       timestamp: new Date(),
+      responseLength: response.length,
       wordCount: response.trim().split(/\s+/).filter(w => w.length > 0).length
     });
     this.conversationHistory.push(
@@ -7727,16 +7727,51 @@ class AssessmentSession {
       { type: 'response', content: response, timestamp: new Date() }
     );
     this.lastActivity = new Date();
+    
+    if (this.responses.length >= QUESTION_BANK.length) {
+      this.stage = 'assessment_complete';
+    }
   }
 
   setAnalysisResults(results) {
-    this.analysisResults = results;
+    this.analysisResults = { ...results, generatedAt: new Date() };
+    this.stage = 'analysis_complete';
     this.lastActivity = new Date();
   }
+
 
   setMetadata(key, value) {
     this.metadata[key] = value;
     this.lastActivity = new Date();
+  }
+
+  getCurrentQuestion() {
+    if (this.currentQuestionIndex >= QUESTION_BANK.length) {
+      return null;
+    }
+    return QUESTION_BANK[this.currentQuestionIndex];
+  }
+
+  getProgress() {
+    return {
+      questionsAnswered: this.responses.length,
+      totalQuestions: QUESTION_BANK.length,
+      percentComplete: Math.round((this.responses.length / QUESTION_BANK.length) * 100),
+      stage: this.stage,
+      isComplete: this.responses.length >= QUESTION_BANK.length
+    };
+  }
+
+  // Save session data when complete
+  async saveForTraining() {
+    if (this.stage === 'analysis_complete') {
+      try {
+        await sessionStorage.saveCompletedSession(this);
+        console.log(`💾 Session ${this.id} saved for training purposes`);
+      } catch (error) {
+        console.error(`❌ Failed to save session ${this.id} for training:`, error);
+      }
+    }
   }
 }
 
@@ -7926,13 +7961,13 @@ class SupabaseAssessmentSession extends AssessmentSession {
 function createSession() {
   const sessionId = 'assess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   
-  // Use Supabase session if available, otherwise regular session
+  // Use Supabase session only if properly configured
   const session = supabase ? 
     new SupabaseAssessmentSession(sessionId) : 
     new AssessmentSession(sessionId);
   
   sessions.set(sessionId, session);
-  console.log(`🆕 New session created: ${sessionId}`);
+  console.log(`🆕 New session created: ${sessionId} (${supabase ? 'Supabase' : 'Memory'})`);
   return session;
 }
 
@@ -8031,7 +8066,59 @@ function getSessionStats() {
 // SIMPLIFIED ENHANCED ANALYSIS ENGINE - Replace in server.js
 // =============================================================================
 
-const { LLMAnalysisEngine } = require('./llmAnalysisEngine');
+// Safe LLM Engine import with fallback
+let LLMAnalysisEngine;
+try {
+  const llmModule = require('./llmAnalysisEngine');
+  LLMAnalysisEngine = llmModule.LLMAnalysisEngine;
+  console.log('✅ LLM Analysis Engine loaded successfully');
+} catch (error) {
+  console.warn('⚠️ LLM Analysis Engine not available:', error.message);
+  
+  // Create fallback class
+  LLMAnalysisEngine = class {
+    async analyzePartnerBehavior(responses, demographics) {
+      console.log('🔄 Using emergency fallback analysis...');
+      return {
+        persona: 'The Clinger',
+        traitScores: this.getDefaultTraitScores(),
+        scenarioScores: this.getDefaultScenarioScores(),
+        riskLevel: 'medium',
+        confidence: 0.4,
+        analysisMethod: 'emergency_fallback',
+        keyIndicators: ['Analysis system unavailable'],
+        reasoning: 'LLM engine unavailable - emergency fallback used'
+      };
+    }
+    
+    async testConnections() {
+      return { 
+        openai: { available: false }, 
+        claude: { available: false },
+        fallback: { available: true }
+      };
+    }
+    
+    getDefaultTraitScores() {
+      return {
+        DOMN: 5, EXPL: 5, EMPA: 5, CTRL: 5, DECP: 5, BNDY: 5, ISOL: 5, ACCO: 5,
+        CHAR: 5, GRAN: 5, CNFL: 5, IMPL: 5, NEED: 5, INCO: 5, VALS: 5, DISP: 5,
+        SUPR: 5, TRST: 5, INTN: 5, SNSE: 5, SEEK: 5, PERS: 5, CGFL: 5, EMOX: 5,
+        HYPL: 5, ATCH: 5, DYRG: 5, ENSH: 5
+      };
+    }
+    
+    getDefaultScenarioScores() {
+      return {
+        'Decision-Making Dynamics': 50,
+        'Conflict Resolution Patterns': 50,
+        'Social Connection Control': 50,
+        'Emotional Support Quality': 50,
+        'Boundary Respect': 50
+      };
+    }
+  };
+}
 
 class EnhancedAnalysisEngine {
   constructor() {
