@@ -1,17 +1,29 @@
-# Python virtual environment
-venv/
-__pycache__/
-*.pyc
-
-# Logs and misc
-*.log
+# Environment variables - NEVER commit these
 .env
 .env.local
+.env.development
+.env.test
 .env.production
 .env.*
+
 # Node modules
 node_modules/
 
-.DS_Store
-dist/
-build/
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity

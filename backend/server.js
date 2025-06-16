@@ -12,6 +12,58 @@ const path = require('path');
 const crypto = require('crypto');
 require('dotenv').config();
 
+// =============================================================================
+// SUPABASE DATABASE INITIALIZATION
+// =============================================================================
+
+let supabase = null;
+
+// Initialize Supabase client if environment variables are available
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: false // We don't need user auth for this app
+        },
+        db: {
+          schema: 'public'
+        }
+      }
+    );
+    
+    console.log('✅ Supabase client initialized successfully');
+    console.log(`   └─ URL: ${process.env.SUPABASE_URL}`);
+    
+    // Test connection
+    supabase.from('assessment_sessions').select('count', { count: 'exact', head: true })
+      .then(({ error, count }) => {
+        if (error) {
+          console.warn('⚠️ Supabase connection test failed:', error.message);
+          console.warn('   └─ Database tables may not be set up yet');
+        } else {
+          console.log(`✅ Supabase connection verified - ${count || 0} sessions in database`);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Supabase connection test error:', err.message);
+      });
+      
+  } catch (error) {
+    console.error('❌ Failed to initialize Supabase client:', error.message);
+    console.log('   └─ Running in memory-only mode');
+    supabase = null;
+  }
+} else {
+  console.log('⚠️ Supabase environment variables not found');
+  console.log('   ├─ Missing: SUPABASE_URL and/or SUPABASE_ANON_KEY');
+  console.log('   └─ Running in memory-only mode');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
