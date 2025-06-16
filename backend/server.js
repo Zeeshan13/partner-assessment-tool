@@ -7755,6 +7755,30 @@ class AssessmentSession {
     };
   }
 
+  // ADD THESE MISSING METHODS:
+
+  updateActivity() {
+    this.lastActivity = new Date();
+    return this;
+  }
+
+  isExpired(timeoutMs = 24 * 60 * 60 * 1000) {
+    const now = new Date();
+    return (now - this.lastActivity) > timeoutMs;
+  }
+
+  getSessionInfo() {
+    return {
+      id: this.id,
+      stage: this.stage,
+      createdAt: this.createdAt,
+      lastActivity: this.lastActivity,
+      responsesCount: this.responses.length,
+      hasResults: !!this.analysisResults,
+      demographics: this.demographics
+    };
+  }
+
   // Keep existing methods
   setDemographics(demographics) {
     this.demographics = { ...demographics, setAt: new Date() };
