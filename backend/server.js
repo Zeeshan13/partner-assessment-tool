@@ -9394,120 +9394,72 @@ app.get('/api/stats', (req, res) => {
 // Start new assessment session
 app.post('/api/assessment/start', (req, res) => {
   try {
-    const sessionId = 'assess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    const session = new AssessmentSession(sessionId);
+    const session = createSession();
     
-    // Set metadata
-    session.setMetadata('userAgent', req.get('User-Agent'));
-    session.setMetadata('ipAddress', req.ip);
-    session.setMetadata('startTime', new Date());
+    // Set user agent for tracking
+    if (req.headers['user-agent']) {
+      session.setMetadata('userAgent', req.headers['user-agent']);
+    }
     
-    sessions.set(sessionId, session);
-    console.log(`🆕 New assessment started: ${sessionId}`);
-
+    // THIS IS THE FIXED LOGGING - make sure this is in your server.js
+    console.log(`🆕 New assessment started: ${session.id}`);
+    
     res.json({
       success: true,
-      sessionId: sessionId,
-      stage: 'demographics',
-      message: 'Assessment session created successfully',
+      sessionId: session.id,
+      message: 'New assessment session created successfully',
       demographicOptions: DEMOGRAPHIC_OPTIONS,
-      instructions: {
-        step: 1,
-        title: 'Tell us about yourself',
-        description: 'This helps us provide more relevant insights for your situation'
-      }
+      introMessage: "Let's start by learning a bit about you and your relationship. This helps us provide more personalized insights."
     });
   } catch (error) {
-    console.error('❌ Start session error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to start assessment session',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('❌ Session creation error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create session' });
   }
 });
 
 // Submit demographics information
-app.post('/api/assessment/demographics', (req, res) => {
+app.post('/api/assessment/demographics', async (req, res) => {
   try {
     const { sessionId, demographics } = req.body;
-
-    // Validation
-    if (!sessionId || !demographics) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields: sessionId and demographics are required' 
-      });
-    }
-
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Session not found or expired',
-        action: 'Please start a new assessment'
-      });
-    }
-
-    // Validate required demographic fields
-    const requiredFields = ['ageGroup', 'gender', 'region', 'relationshipStatus'];
-    const missingFields = requiredFields.filter(field => !demographics[field]);
     
-    if (missingFields.length > 0) {
+    if (!sessionId || !demographics) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required demographic information',
-        missing_fields: missingFields,
-        required_fields: requiredFields
+        error: 'Session ID and demographics are required'
       });
     }
 
-    // Validate field values
-    const invalidFields = [];
-    Object.entries(demographics).forEach(([field, value]) => {
-      if (DEMOGRAPHIC_OPTIONS[field] && !DEMOGRAPHIC_OPTIONS[field][value]) {
-        invalidFields.push({ field, value, valid_options: Object.keys(DEMOGRAPHIC_OPTIONS[field]) });
-      }
-    });
-
-    if (invalidFields.length > 0) {
-      return res.status(400).json({
+    const session = getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({
         success: false,
-        error: 'Invalid demographic values',
-        invalid_fields: invalidFields
+        error: 'Session not found or expired'
       });
     }
 
-    // Save demographics
-    session.setDemographics(demographics);
+    // Save demographics (this should trigger Supabase save)
+    await session.setDemographics(demographics);
+    
+    // THIS IS THE FIXED LOGGING - make sure this is in your server.js
     console.log(`👤 Demographics saved for ${sessionId}:`, demographics);
 
-    // Get first question
-    const firstQuestion = QUESTION_BANK[0];
+    const currentQuestion = session.getCurrentQuestion();
+    if (!currentQuestion) {
+      return res.status(400).json({
+        success: false,
+        error: 'No questions available'
+      });
+    }
 
     res.json({
       success: true,
-      stage: 'assessment',
-      question: firstQuestion,
-      progress: {
-        questionsTotal: QUESTION_BANK.length,
-        questionsRemaining: QUESTION_BANK.length,
-        percentComplete: 0
-      },
-      instructions: {
-        step: 2,
-        title: 'Share your experience',
-        description: 'Please answer honestly about your relationship. There are no right or wrong answers.'
-      },
-      introMessage: `Thank you for sharing that information with me. Now I'd like to understand your relationship dynamics better. Please take your time and answer as honestly as you feel comfortable.`
+      message: 'Demographics saved successfully',
+      question: currentQuestion,
+      introMessage: "Great! Now let's explore your relationship through some thoughtful questions. Take your time and be as honest as you feel comfortable."
     });
   } catch (error) {
-    console.error('❌ Demographics error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to process demographics',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('❌ Demographics submission error:', error);
+    res.status(500).json({ success: false, error: 'Failed to save demographics' });
   }
 });
 
