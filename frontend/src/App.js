@@ -1,29 +1,19 @@
 import React, { useState, useRef } from 'react';
 import './App.css';
 
-//const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001/api';
-
+// Fixed API configuration - no duplicates
 const API_BASE = process.env.NODE_ENV === 'production' 
   ? process.env.REACT_APP_API_BASE || 'https://your-backend-app.railway.app/api'
   : process.env.REACT_APP_API_BASE || 'http://localhost:3001/api';
 
-// Keep the rest the same:
-const TALLY_FORM_URL = process.env.REACT_APP_TALLY_URL || 'https://tally.so/r/YOUR_FORM_ID';
+const TALLY_FORM_URL = process.env.REACT_APP_TALLY_URL || 'https://tally.so/r/w8gx25';
 
-// Add this at the top of your App component, right after the const declarations
+// Debug logging
 console.log('API_BASE:', API_BASE);
 console.log('Environment check:', {
   NODE_ENV: process.env.NODE_ENV,
   REACT_APP_API_BASE: process.env.REACT_APP_API_BASE,
   IS_PRODUCTION: process.env.NODE_ENV === 'production'
-});
-const TALLY_FORM_URL = process.env.REACT_APP_TALLY_URL || 'https://tally.so/r/YOUR_FORM_ID';
-
-// Add this at the top of your App component, right after the const declarations
-console.log('API_BASE:', API_BASE);
-console.log('Environment check:', {
-  NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_BASE: process.env.REACT_APP_API_BASE
 });
 
 function App() {
